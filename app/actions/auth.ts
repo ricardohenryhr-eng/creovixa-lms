@@ -1,10 +1,11 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { validatePassword, generateTempPassword } from "@/lib/password"
-import { welcomeEmail, sendEmail } from "@/lib/emails"
+import { welcomeEmail, passwordResetEmail, sendEmail } from "@/lib/emails"
 import { SUPER_ADMIN_EMAIL } from "@/lib/roles"
 
 interface ActionResult {
@@ -51,6 +52,62 @@ export async function completeFirstLogin(newPassword: string, confirmPassword: s
 
   revalidatePath("/", "layout")
   return { ok: true }
+}
+
+/**
+ * Start a password reset. Generates a Supabase recovery token via the Admin
+ * API, wraps it in a link to our /auth/confirm route, and delivers it through
+ * Zoho SMTP. Always returns a generic success message to avoid revealing
+ * whether an account exists (enumeration resistance).
+ */
+export async function requestPasswordReset(email: string): Promise<ActionResult> {
+  const generic = {
+    ok: true,
+    message: "If an account exists for that email, a password reset link is on its way.",
+  }
+
+  const normalized = email.trim().toLowerCase()
+  if (!normalized || !normalized.includes("@")) {
+    return { ok: false, error: "Enter a valid email address." }
+  }
+
+  const admin = createAdminClient()
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("id, full_name, status")
+    .eq("email", normalized)
+    .maybeSingle()
+
+  // No account, or a suspended one: respond generically without sending mail.
+  if (!profile || profile.status === "suspended") return generic
+
+  const hdrs = await headers()
+  const origin =
+    hdrs.get("origin") ??
+    `${hdrs.get("x-forwarded-proto") ?? "https"}://${hdrs.get("host") ?? "lms.creovixa.com"}`
+  const next = encodeURIComponent("/set-password?mode=reset")
+
+  const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email: normalized,
+  })
+  if (linkErr || !link?.properties?.hashed_token) {
+    console.log("[v0] generateLink recovery failed:", linkErr?.message)
+    // Still generic to the caller.
+    return generic
+  }
+
+  const resetLink = `${origin}/auth/confirm?token_hash=${link.properties.hashed_token}&type=recovery&next=${next}`
+
+  await sendEmail(
+    passwordResetEmail({
+      fullName: profile.full_name ?? "",
+      email: normalized,
+      resetLink,
+    }),
+  )
+
+  return generic
 }
 
 /** Record a successful login timestamp for the current user. */

@@ -1,5 +1,6 @@
 import "server-only"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { sendViaZoho, isMailerConfigured } from "@/lib/mailer"
 
 /**
  * Canonical sender. Every platform message is From: Creovixa Learn <admin@creovixa.com>.
@@ -33,12 +34,43 @@ export interface EmailMessage {
 }
 
 /**
- * "Send" an email. Because no delivery provider is connected yet, the message
- * is persisted to public.email_log (the durable outbox) instead of being
- * transmitted. Swapping in a real provider later only changes this function.
+ * Send a transactional email through Zoho Mail SMTP, then record it in
+ * public.email_log (the durable outbox) with the real delivery result.
+ *
+ * If Zoho SMTP credentials are not configured yet, the message is still logged
+ * with delivery_status = 'logged' so provisioning never fails silently; once
+ * ZOHO_SMTP_USER / ZOHO_SMTP_PASSWORD are set, delivery happens automatically.
+ *
+ * Delivery failures do NOT throw: the caller's operation (e.g. creating a user)
+ * must succeed even if the mail server is briefly unreachable. The failure is
+ * captured in the outbox so an admin can resend.
  */
 export async function sendEmail(msg: EmailMessage): Promise<void> {
   const admin = createAdminClient()
+
+  let deliveryStatus = "logged"
+  let provider = "none"
+  let providerMessageId: string | null = null
+  let errorText: string | null = null
+
+  if (isMailerConfigured()) {
+    provider = "zoho"
+    try {
+      providerMessageId = await sendViaZoho({
+        to: msg.to,
+        fromName: EMAIL_FROM_NAME,
+        fromAddress: EMAIL_FROM_ADDRESS,
+        subject: msg.subject,
+        text: msg.body,
+      })
+      deliveryStatus = "sent"
+    } catch (err) {
+      deliveryStatus = "failed"
+      errorText = err instanceof Error ? err.message : "Unknown SMTP error"
+      console.log("[v0] Zoho SMTP send failed:", errorText)
+    }
+  }
+
   const { error } = await admin.from("email_log").insert({
     to_email: msg.to,
     from_name: EMAIL_FROM_NAME,
@@ -46,10 +78,13 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
     subject: msg.subject,
     body: msg.body,
     kind: msg.kind,
+    delivery_status: deliveryStatus,
+    provider,
+    provider_message_id: providerMessageId,
+    error: errorText,
   })
   if (error) {
     console.log("[v0] email_log insert failed:", error.message)
-    throw new Error("Failed to record outbound email")
   }
 }
 
@@ -80,6 +115,26 @@ ${courseListText(params.courses)}
 
 ${FOOTER}`
   return { to: params.email, subject: "Welcome to Creovixa LMS", body, kind: "welcome" }
+}
+
+export function passwordResetEmail(params: {
+  fullName: string
+  email: string
+  resetLink: string
+}): EmailMessage {
+  const greetingName = params.fullName?.trim() ? params.fullName : "there"
+  const body = `Hello ${greetingName},
+
+We received a request to reset the password for your Creovixa LMS account (${params.email}).
+
+To choose a new password, click the link below:
+
+${params.resetLink}
+
+If you did not request a password reset, you can safely ignore this email and your password will remain unchanged.
+
+${FOOTER}`
+  return { to: params.email, subject: "Reset your Creovixa LMS password", body, kind: "password_reset" }
 }
 
 export function courseAssignmentEmail(params: {

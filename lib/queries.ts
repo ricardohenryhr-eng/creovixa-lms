@@ -87,6 +87,10 @@ export interface EmailLogRow {
   subject: string
   body: string
   kind: string
+  delivery_status: string
+  provider: string
+  provider_message_id: string | null
+  error: string | null
   created_at: string
 }
 
@@ -95,7 +99,9 @@ export async function getEmailLog(): Promise<EmailLogRow[]> {
   const supabase = await createClient()
   const { data } = await supabase
     .from("email_log")
-    .select("id, to_email, from_name, from_email, subject, body, kind, created_at")
+    .select(
+      "id, to_email, from_name, from_email, subject, body, kind, delivery_status, provider, provider_message_id, error, created_at",
+    )
     .order("created_at", { ascending: false })
     .limit(200)
   return (data as EmailLogRow[]) ?? []
