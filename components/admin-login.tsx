@@ -202,9 +202,11 @@ export function AdminLogin() {
                   Verify &amp; sign in
                 </Button>
 
-                <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">
-                  Demo authenticator code: <span className="font-mono font-semibold text-white">{DEMO_MFA_CODE}</span>
-                </p>
+                {process.env.NODE_ENV !== "production" && (
+                  <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">
+                    Demo authenticator code: <span className="font-mono font-semibold text-white">{DEMO_MFA_CODE}</span>
+                  </p>
+                )}
               </form>
             </>
           )}
