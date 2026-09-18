@@ -12,6 +12,7 @@ import {
   acknowledgeTempPassword,
   setSuperAdminPassword,
   superAdminMfaCode,
+  superAdminMfaEnabled,
   SUPER_ADMIN_EMAIL,
   type ProvisioningState,
 } from "@/lib/provisioning"
@@ -102,11 +103,30 @@ export function AdminLogin() {
       setLoading(false)
       return
     }
-    // Credentials verified — require the second factor before creating a session.
     setPending(res.user)
-    setStep("mfa")
     setCode("")
     setLoading(false)
+    // Two-factor is temporarily disabled for the Super Admin while code
+    // delivery is being fixed: verified email + password grants access
+    // directly. All other admins still require the second factor.
+    const mfaRequired = !(res.user.email.toLowerCase() === SUPER_ADMIN_EMAIL && !superAdminMfaEnabled())
+    if (mfaRequired) {
+      setStep("mfa")
+    } else {
+      proceedAfterVerification(res.user)
+    }
+  }
+
+  /** After identity is verified, enforce a first-login password change or enter. */
+  function proceedAfterVerification(verified: User) {
+    if (verified.mustChangePassword) {
+      setNewPw("")
+      setConfirmPw("")
+      setStep("change-password")
+      return
+    }
+    establishSession(verified)
+    router.replace("/admin")
   }
 
   function submitMfa(e: FormEvent) {
@@ -122,16 +142,8 @@ export function AdminLogin() {
       setLoading(false)
       return
     }
-    // A Super Admin on a temporary password must set a new one before entering.
-    if (pending.mustChangePassword) {
-      setNewPw("")
-      setConfirmPw("")
-      setStep("change-password")
-      setLoading(false)
-      return
-    }
-    establishSession(pending)
-    router.replace("/admin")
+    setLoading(false)
+    proceedAfterVerification(pending)
   }
 
   function submitNewPassword(e: FormEvent) {

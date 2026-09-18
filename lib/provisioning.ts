@@ -31,6 +31,12 @@ export interface ProvisioningState {
   mfaCode: string
   /** ISO timestamp the current 2FA code was generated / last reset. */
   mfaGeneratedAt: string
+  /**
+   * Whether the Super Admin's second factor is required at login. Temporarily
+   * disabled while out-of-band delivery of the code (email/SMS/authenticator)
+   * is unavailable, so the Super Admin can sign in with email + password only.
+   */
+  mfaEnabled: boolean
 }
 
 function randInt(max: number): number {
@@ -79,18 +85,27 @@ export function readProvisioning(): ProvisioningState {
       password: null,
       mfaCode: "",
       mfaGeneratedAt: "",
+      mfaEnabled: false,
     }
   }
   try {
     const raw = window.localStorage.getItem(KEY)
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<ProvisioningState>
+      let changed = false
       // Backfill 2FA fields for records created before 2FA was provisioned.
       if (!parsed.mfaCode) {
         parsed.mfaCode = generateMfaCode()
         parsed.mfaGeneratedAt = new Date().toISOString()
-        window.localStorage.setItem(KEY, JSON.stringify(parsed))
+        changed = true
       }
+      // 2FA is temporarily disabled until code delivery is restored, so any
+      // record missing this flag defaults to disabled (email + password only).
+      if (parsed.mfaEnabled === undefined) {
+        parsed.mfaEnabled = false
+        changed = true
+      }
+      if (changed) window.localStorage.setItem(KEY, JSON.stringify(parsed))
       return parsed as ProvisioningState
     }
   } catch {
@@ -103,6 +118,8 @@ export function readProvisioning(): ProvisioningState {
     password: null,
     mfaCode: generateMfaCode(),
     mfaGeneratedAt: new Date().toISOString(),
+    // Temporarily disabled: out-of-band 2FA code delivery is unavailable.
+    mfaEnabled: false,
   }
   window.localStorage.setItem(KEY, JSON.stringify(initial))
   return initial
@@ -152,4 +169,17 @@ export function resetSuperAdminMfa(): string {
   const next = generateMfaCode()
   writeProvisioning({ ...readProvisioning(), mfaCode: next, mfaGeneratedAt: new Date().toISOString() })
   return next
+}
+
+/** Whether the Super Admin's second factor is currently required at login. */
+export function superAdminMfaEnabled(): boolean {
+  return readProvisioning().mfaEnabled
+}
+
+/**
+ * Enable or disable the Super Admin's second factor. Disabling is a temporary
+ * measure while code delivery is unavailable, allowing email + password sign-in.
+ */
+export function setSuperAdminMfaEnabled(enabled: boolean) {
+  writeProvisioning({ ...readProvisioning(), mfaEnabled: enabled })
 }

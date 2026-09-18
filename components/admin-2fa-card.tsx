@@ -1,11 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { KeyRound, RefreshCw, Copy, Check, ShieldCheck } from "lucide-react"
+import { KeyRound, RefreshCw, Copy, Check, ShieldCheck, ShieldAlert, ShieldOff } from "lucide-react"
 import { Card, Button } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
 import { isCertificateController } from "@/lib/admin"
-import { readProvisioning, resetSuperAdminMfa, SUPER_ADMIN_EMAIL } from "@/lib/provisioning"
+import {
+  readProvisioning,
+  resetSuperAdminMfa,
+  setSuperAdminMfaEnabled,
+  SUPER_ADMIN_EMAIL,
+} from "@/lib/provisioning"
 import { formatDateTime } from "@/lib/utils"
 
 /**
@@ -17,6 +22,7 @@ export function Admin2faCard() {
   const { user } = useAuth()
   const [code, setCode] = useState<string | null>(null)
   const [generatedAt, setGeneratedAt] = useState<string>("")
+  const [enabled, setEnabled] = useState(false)
   const [copied, setCopied] = useState(false)
   const [justReset, setJustReset] = useState(false)
 
@@ -24,9 +30,16 @@ export function Admin2faCard() {
     const p = readProvisioning()
     setCode(p.mfaCode)
     setGeneratedAt(p.mfaGeneratedAt)
+    setEnabled(p.mfaEnabled)
   }, [])
 
   if (!isCertificateController(user)) return null
+
+  function toggleEnabled() {
+    const next = !enabled
+    setSuperAdminMfaEnabled(next)
+    setEnabled(next)
+  }
 
   function reset() {
     const next = resetSuperAdminMfa()
@@ -59,7 +72,42 @@ export function Admin2faCard() {
         </div>
       </div>
 
-      <p className="mt-4 text-sm text-muted-foreground">
+      {/* Status + enable/disable control */}
+      <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <span
+            className={
+              enabled
+                ? "flex h-8 w-8 items-center justify-center rounded-lg bg-success/10 text-success"
+                : "flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600"
+            }
+          >
+            {enabled ? <ShieldCheck className="h-4 w-4" /> : <ShieldOff className="h-4 w-4" />}
+          </span>
+          <div>
+            <p className="text-sm font-semibold">{enabled ? "Enabled" : "Disabled (temporary)"}</p>
+            <p className="text-xs text-muted-foreground">
+              {enabled ? "Second factor required at sign-in" : "Email + password only"}
+            </p>
+          </div>
+        </div>
+        <Button onClick={toggleEnabled} variant={enabled ? "outline" : "primary"}>
+          {enabled ? "Disable 2FA" : "Enable 2FA"}
+        </Button>
+      </div>
+
+      {!enabled && (
+        <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Two-factor is temporarily disabled for {SUPER_ADMIN_EMAIL} because verification-code delivery is
+            unavailable. Sign in with email and password. Re-enable once code delivery (authenticator, SMS, or email) is
+            restored.
+          </span>
+        </p>
+      )}
+
+      <p className="mt-5 text-sm text-muted-foreground">
         Current verification code for the secure admin portal. Resetting invalidates the old code immediately and
         generates a new one.
       </p>
