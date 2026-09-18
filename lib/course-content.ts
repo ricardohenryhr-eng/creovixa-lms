@@ -1,4 +1,5 @@
 import type { Module, Resource, QuizQuestion } from "@/lib/data"
+import { cchiContent } from "@/lib/cchi-content"
 
 /**
  * Full, professionally authored training content for every course in the
@@ -2012,7 +2013,7 @@ const legal: CourseContent = {
 
 // ───────────────────────────────────────────────────────────────────────────
 // 11. 40-Hour Medical Interpreter Training (capstone)
-// ───────────────────────────────────────────────────────────────────────────
+// ────────────────��──────────────────────────────────────────────────────────
 const medical: CourseContent = {
   modules: [
     {
@@ -2387,7 +2388,7 @@ const medical: CourseContent = {
 
 // ───────────────────────────────────────────────────────────────────────────
 // 12. US Healthcare Interpreting: A Refresher Course for Remote Interpreters
-// ───────────────────────────────────────────────────────────────────────────
+// ───────���───────────────────────────────────────────────────────────────────
 const usHealthcareRefresher: CourseContent = {
   modules: [
     {
@@ -2589,6 +2590,8 @@ export const courseContent: Record<string, CourseContent> = {
   "legal-interpretation": legal,
   "medical-interpreter-training-40h": medical,
   "us-healthcare-interpreting-refresher": usHealthcareRefresher,
+  // CCHI-aligned Healthcare Interpreter Training Program
+  ...cchiContent,
 }
 
 /** Total lesson count for a course slug (used to keep metadata in sync). */

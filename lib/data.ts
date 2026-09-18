@@ -121,11 +121,20 @@ export interface CertRule {
   releaseAfterMonths?: number
 }
 
+/**
+ * Learning tracks. Courses sequence (unlock in order) within their own track,
+ * so the CCHI healthcare program runs independently of the core certification
+ * track. Undefined is treated as the "core" track.
+ */
+export type CourseTrack = "core" | "cchi"
+
 export interface Course {
   id: string
   slug: string
   title: string
   category: string
+  /** Learning track this course belongs to; defaults to "core" when omitted. */
+  track?: CourseTrack
   level: "Beginner" | "Intermediate" | "Advanced"
   description: string
   instructor: string
@@ -215,6 +224,12 @@ export const categories = [
   "Compliance",
   "Ethics",
 ]
+
+/** Human-readable labels for each learning track (shown as catalog sections). */
+export const trackLabels: Record<CourseTrack, string> = {
+  core: "Core Interpreter Certification",
+  cchi: "CCHI Healthcare Interpreter Program",
+}
 
 const resources: Resource[] = [
   { id: "r1", name: "Course Handbook.pdf", size: "2.4 MB", type: "pdf" },
