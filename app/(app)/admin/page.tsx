@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Users, BookOpen, Award, BarChart3, Settings, ArrowRight, UserPlus, FileCheck2 } from "lucide-react"
+import { Users, BookOpen, Award, BarChart3, Settings, ArrowRight, UserPlus, FileCheck2, UserCheck, BadgeCheck, ClipboardList } from "lucide-react"
 import { PageHeader, Card, StatCard, Badge, Avatar } from "@/components/ui"
 import { AdminCertApprovals } from "@/components/admin-cert-approvals"
 import { teamUsers, courses, certificates, roleLabels } from "@/lib/data"
@@ -7,6 +7,12 @@ import { formatDate } from "@/lib/utils"
 
 const shortcuts = [
   { href: "/admin/users", label: "User management", desc: "Add, edit, suspend, and assign courses.", icon: Users },
+  { href: "/admin/courses", label: "Course management", desc: "Catalog, sequence, and publication.", icon: BookOpen },
+  { href: "/admin/certificates", label: "Certificate management", desc: "Issued certificates and validity.", icon: Award },
+  { href: "/admin/interpreters", label: "Interpreter management", desc: "Readiness and account standing.", icon: UserCheck },
+  { href: "/admin/certificate-release", label: "Certificate release", desc: "Release protected certificates.", icon: BadgeCheck },
+  { href: "/admin/progress", label: "Training progress", desc: "Track learner advancement.", icon: ClipboardList },
+  { href: "/admin/quiz-results", label: "Quiz results", desc: "Attempts, scores, and pass rates.", icon: FileCheck2 },
   { href: "/admin/reports", label: "Reports & analytics", desc: "Completion rates, exams, and certificates.", icon: BarChart3 },
   { href: "/admin/settings", label: "Platform settings", desc: "Branding, notifications, and defaults.", icon: Settings },
 ]
@@ -24,6 +30,37 @@ export default function AdminPage() {
         <StatCard label="Courses" value={courses.length} icon={<BookOpen className="h-5 w-5" />} tone="orange" hint="Published" />
         <StatCard label="Certificates" value={certificates.length + 38} icon={<Award className="h-5 w-5" />} tone="green" hint="Issued this year" />
         <StatCard label="Exams passed" value="312" icon={<FileCheck2 className="h-5 w-5" />} tone="amber" hint="87% pass rate" />
+      </div>
+
+      <div className="mt-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-display text-lg font-semibold">Quick access</h2>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Card className="flex items-center gap-3 border-primary/30 bg-accent/40 p-5">
+            <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <UserPlus className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-display font-semibold">Add a new user</p>
+              <Link href="/admin/users" className="text-sm text-primary hover:underline">Go to user management</Link>
+            </div>
+          </Card>
+          {shortcuts.map((s) => (
+            <Link key={s.href} href={s.href}>
+              <Card className="flex h-full items-center gap-3 p-5 transition hover:border-primary hover:shadow-md">
+                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-muted text-foreground">
+                  <s.icon className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-display font-semibold">{s.label}</p>
+                  <p className="text-xs text-muted-foreground">{s.desc}</p>
+                </div>
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </Card>
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -52,35 +89,9 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <Card className="flex items-center gap-3 border-primary/30 bg-accent/40 p-5">
-            <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <UserPlus className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="font-display font-semibold">Add a new user</p>
-              <Link href="/admin/users" className="text-sm text-primary hover:underline">Go to user management</Link>
-            </div>
-          </Card>
-          {shortcuts.map((s) => (
-            <Link key={s.href} href={s.href}>
-              <Card className="flex items-center gap-3 p-5 transition hover:border-primary hover:shadow-md">
-                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-muted text-foreground">
-                  <s.icon className="h-5 w-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-display font-semibold">{s.label}</p>
-                  <p className="text-xs text-muted-foreground">{s.desc}</p>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              </Card>
-            </Link>
-          ))}
+        <div className="lg:col-span-1">
+          <AdminCertApprovals />
         </div>
-      </div>
-
-      <div className="mt-6">
-        <AdminCertApprovals />
       </div>
     </div>
   )

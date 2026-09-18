@@ -9,10 +9,11 @@ import { Button, Input } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
 import { roleLabels, type Role } from "@/lib/data"
 
-const demoAccounts: { role: Role; email: string }[] = [
-  { role: "admin", email: "admin@creovixa.com" },
-  { role: "interpreter", email: "interpreter@creovixa.com" },
-  { role: "student", email: "student@creovixa.com" },
+const demoAccounts: { role: Role; email: string; password: string }[] = [
+  { role: "super_admin", email: "superadmin@creovixa.com", password: "Admin123!" },
+  { role: "admin", email: "admin@creovixa.com", password: "Admin123!" },
+  { role: "interpreter", email: "interpreter@creovixa.com", password: "demo" },
+  { role: "student", email: "student@creovixa.com", password: "demo" },
 ]
 
 export default function LoginPage() {
@@ -37,10 +38,10 @@ export default function LoginPage() {
     router.push("/dashboard")
   }
 
-  function quick(email: string) {
+  function quick(email: string, password: string) {
     setError("")
     setLoading(true)
-    const res = login(email, "demo")
+    const res = login(email, password)
     if (res.ok) router.push("/dashboard")
     else {
       setError(res.error ?? "Unable to sign in.")
@@ -137,15 +138,15 @@ export default function LoginPage() {
               {demoAccounts.map((a) => (
                 <button
                   key={a.role}
-                  onClick={() => quick(a.email)}
+                  onClick={() => quick(a.email, a.password)}
                   disabled={loading}
-                  className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-2.5 text-left text-sm transition hover:border-primary hover:bg-accent disabled:opacity-50"
+                  className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-left text-sm transition hover:border-primary hover:bg-accent disabled:opacity-50"
                 >
-                  <span>
+                  <span className="min-w-0">
                     <span className="font-medium">{roleLabels[a.role]}</span>
-                    <span className="ml-2 text-muted-foreground">{a.email}</span>
+                    <span className="ml-2 truncate text-muted-foreground">{a.email}</span>
                   </span>
-                  <span className="text-xs text-muted-foreground">password: demo</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">password: {a.password}</span>
                 </button>
               ))}
             </div>

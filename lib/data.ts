@@ -123,10 +123,24 @@ export const roleLabels: Record<Role, string> = {
 
 export const demoUsers: (User & { password: string })[] = [
   {
+    id: "u-0",
+    name: "Elena Rossi",
+    email: "superadmin@creovixa.com",
+    password: "Admin123!",
+    role: "super_admin",
+    status: "active",
+    avatarColor: "#1e293b",
+    joinedAt: "2022-09-01",
+    coursesEnrolled: 12,
+    coursesCompleted: 12,
+    certificates: 9,
+    progress: 100,
+  },
+  {
     id: "u-1",
     name: "Sofia Marin",
     email: "admin@creovixa.com",
-    password: "demo",
+    password: "Admin123!",
     role: "admin",
     status: "active",
     avatarColor: "#0f172a",
