@@ -135,7 +135,7 @@ export interface Course {
   category: string
   /** Learning track this course belongs to; defaults to "core" when omitted. */
   track?: CourseTrack
-  level: "Beginner" | "Intermediate" | "Advanced"
+  level: "Beginner" | "Intermediate" | "Advanced" | "Required"
   description: string
   instructor: string
   lessonsCount: number
@@ -665,15 +665,15 @@ export const courses: Course[] = [
   {
     id: "cchi-4",
     slug: "healthcare-hipaa-compliance",
-    title: "HIPAA & Compliance",
+    title: "HIPAA & Compliance for Healthcare Interpreters",
     category: "Compliance",
     track: "cchi",
-    level: "Beginner",
+    level: "Required",
     description:
-      "Protected health information, the minimum-necessary principle, and the compliance obligations healthcare interpreters must uphold on every assignment.",
+      "A comprehensive course on HIPAA regulations, protected health information, the Privacy and Security Rules, confidentiality, and the compliance obligations remote healthcare interpreters must uphold on every OPI and VRI assignment. Includes case studies, quizzes, and a 40-question final exam.",
     instructor: "Anderson Verger",
-    lessonsCount: 6,
-    hours: 4,
+    lessonsCount: 28,
+    hours: 6,
     enrolled: 870,
     rating: 4.9,
     progress: 0,
