@@ -624,10 +624,10 @@ export const courses: Course[] = [
     track: "cchi",
     level: "Beginner",
     description:
-      "High-frequency medical vocabulary and the word-part system (roots, prefixes, suffixes) that lets interpreters decode unfamiliar terms across body systems.",
+      "Foundational medical vocabulary for healthcare interpreters: the word-part system (roots, prefixes, suffixes, combining forms) plus terminology across body systems, abbreviations, and medications.",
     instructor: "Sofia Marin",
-    lessonsCount: 6,
-    hours: 6,
+    lessonsCount: 33,
+    hours: 12,
     enrolled: 910,
     rating: 4.8,
     progress: 0,
