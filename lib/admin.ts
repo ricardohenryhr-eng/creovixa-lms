@@ -10,6 +10,7 @@ import {
   BarChart3,
   Settings,
   KeyRound,
+  Mail,
   type LucideIcon,
 } from "lucide-react"
 import type { Role } from "./data"
@@ -30,6 +31,7 @@ export type AdminSection =
   | "progress"
   | "quiz"
   | "reports"
+  | "emails"
   | "settings"
 
 export interface AdminNavItem {
@@ -50,6 +52,7 @@ export const adminNav: AdminNavItem[] = [
   { href: "/admin/progress", label: "Training Progress", section: "progress", icon: ClipboardList },
   { href: "/admin/quiz-results", label: "Quiz Results", section: "quiz", icon: FileCheck2 },
   { href: "/admin/reports", label: "Reports", section: "reports", icon: BarChart3 },
+  { href: "/admin/emails", label: "Email Outbox", section: "emails", icon: Mail },
   { href: "/admin/settings", label: "Settings", section: "settings", icon: Settings },
 ]
 

@@ -7,40 +7,37 @@ import { Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { Button, Input } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
-import { isPlatformAdmin } from "@/lib/admin"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { authenticate, establishSession } = useAuth()
+  const { login } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [show, setShow] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault()
     setError("")
     setLoading(true)
-    const res = authenticate(email, password)
-    if (!res.ok || !res.user) {
+    const res = await login(email, password)
+    if (!res.ok) {
       setError(res.error ?? "Unable to sign in.")
       setLoading(false)
       return
     }
-    // Administrators must sign in through the secure portal, which enforces
-    // two-factor authentication. Send them there instead of creating a session.
-    if (isPlatformAdmin(res.user.role)) {
-      router.push("/admin")
+    // First login with a temporary password: force a password change before
+    // any dashboard, course, or certificate can be reached.
+    if (res.mustChangePassword) {
+      router.push("/set-password")
       return
     }
-    establishSession(res.user)
     router.push("/dashboard")
   }
 
   return (
     <div className="flex min-h-screen">
-      {/* Brand panel */}
       <div className="relative hidden w-1/2 flex-col justify-between bg-secondary p-12 text-white lg:flex">
         <Link href="/">
           <Logo inverted />
@@ -60,7 +57,6 @@ export default function LoginPage() {
         <p className="text-sm text-slate-400">© {new Date().getFullYear()} Creovixa Language Services</p>
       </div>
 
-      {/* Form panel */}
       <div className="flex w-full flex-col items-center justify-center px-4 py-10 lg:w-1/2">
         <div className="w-full max-w-sm">
           <div className="lg:hidden">
