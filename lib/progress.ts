@@ -5,6 +5,40 @@ import { useCallback, useEffect, useState } from "react"
 const KEY = "creovixa_progress_v2"
 const EVENT = "creovixa-progress-change"
 
+/**
+ * A secure, auto-generated access code for a protected certificate. Generated
+ * automatically when a learner meets all requirements, stored only in the admin
+ * dashboard, never shown to the learner, and non-editable by learners. Only the
+ * designated Super Admin can view, regenerate, or disable it.
+ */
+export interface CertCode {
+  code: string
+  certId: string
+  courseId: string
+  recipient: string
+  generatedAt: string
+  disabled: boolean
+}
+
+export type AuditAction =
+  | "generated"
+  | "regenerated"
+  | "released"
+  | "revoked"
+  | "disabled"
+  | "enabled"
+
+/** An immutable record of every action taken on a protected certificate code. */
+export interface AuditEntry {
+  id: string
+  at: string
+  actor: string
+  action: AuditAction
+  certId: string
+  recipient: string
+  detail?: string
+}
+
 export interface ProgressState {
   /** courseId -> completed lesson ids */
   completedLessons: Record<string, string[]>
@@ -14,6 +48,10 @@ export interface ProgressState {
   courseCompletedAt: Record<string, string>
   /** courseIds whose restricted certificate an admin has released */
   releasedCourses: string[]
+  /** certId -> secure access code record (admin-only) */
+  certCodes: Record<string, CertCode>
+  /** append-only audit trail of certificate-code actions */
+  auditLog: AuditEntry[]
 }
 
 const empty: ProgressState = {
@@ -21,6 +59,8 @@ const empty: ProgressState = {
   passedAssessments: {},
   courseCompletedAt: {},
   releasedCourses: [],
+  certCodes: {},
+  auditLog: [],
 }
 
 function read(): ProgressState {
@@ -34,6 +74,8 @@ function read(): ProgressState {
       passedAssessments: parsed.passedAssessments ?? {},
       courseCompletedAt: parsed.courseCompletedAt ?? {},
       releasedCourses: parsed.releasedCourses ?? [],
+      certCodes: parsed.certCodes ?? {},
+      auditLog: parsed.auditLog ?? [],
     }
   } catch {
     return empty
@@ -43,6 +85,42 @@ function read(): ProgressState {
 function write(state: ProgressState) {
   window.localStorage.setItem(KEY, JSON.stringify(state))
   window.dispatchEvent(new Event(EVENT))
+}
+
+/** Generate a secure, unique certificate access code, e.g. CVX-AC-3F9A-1C7B-D204. */
+function generateAccessCode(): string {
+  const bytes = new Uint8Array(6)
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes)
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256)
+  }
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("").toUpperCase()
+  return `CVX-AC-${hex.slice(0, 4)}-${hex.slice(4, 8)}-${hex.slice(8, 12)}`
+}
+
+function makeAuditEntry(
+  actor: string,
+  action: AuditAction,
+  certId: string,
+  recipient: string,
+  detail?: string,
+): AuditEntry {
+  const id =
+    typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `a-${Date.now()}-${Math.random()}`
+  return { id, at: new Date().toISOString(), actor, action, certId, recipient, detail }
+}
+
+/** Append an audit record (newest first) without mutating the input array. */
+function appendAudit(state: ProgressState, entry: AuditEntry): AuditEntry[] {
+  return [entry, ...state.auditLog]
+}
+
+/** Actor metadata attached to code-control actions for the audit trail. */
+export interface CodeActionMeta {
+  actor: string
+  certId: string
+  recipient: string
 }
 
 export function useProgress() {
@@ -82,17 +160,71 @@ export function useProgress() {
     write(s)
   }, [])
 
-  /** Admin: release / revoke a restricted certificate. */
-  const releaseCourse = useCallback((courseId: string) => {
+  /**
+   * Auto-generate a secure access code for a protected certificate the first
+   * time its requirements are met. Idempotent: a code is created only once and
+   * is logged in the audit trail. Learners never see this code.
+   */
+  const ensureCertCode = useCallback((certId: string, courseId: string, recipient: string) => {
     const s = read()
-    if (s.releasedCourses.includes(courseId)) return
-    s.releasedCourses = [...s.releasedCourses, courseId]
+    if (s.certCodes[certId]) return
+    const code = generateAccessCode()
+    s.certCodes = {
+      ...s.certCodes,
+      [certId]: { code, certId, courseId, recipient, generatedAt: new Date().toISOString(), disabled: false },
+    }
+    s.auditLog = appendAudit(s, makeAuditEntry("System", "generated", certId, recipient, "Access code generated automatically on completion"))
     write(s)
   }, [])
 
-  const revokeCourseRelease = useCallback((courseId: string) => {
+  /** Super Admin: issue a brand-new access code, invalidating the previous one. */
+  const regenerateCertCode = useCallback((meta: CodeActionMeta) => {
+    const s = read()
+    const existing = s.certCodes[meta.certId]
+    const code = generateAccessCode()
+    s.certCodes = {
+      ...s.certCodes,
+      [meta.certId]: {
+        code,
+        certId: meta.certId,
+        courseId: existing?.courseId ?? "",
+        recipient: meta.recipient,
+        generatedAt: new Date().toISOString(),
+        disabled: existing?.disabled ?? false,
+      },
+    }
+    s.auditLog = appendAudit(s, makeAuditEntry(meta.actor, "regenerated", meta.certId, meta.recipient))
+    write(s)
+  }, [])
+
+  /** Super Admin: disable or re-enable a certificate access code. */
+  const setCertCodeDisabled = useCallback((meta: CodeActionMeta, disabled: boolean) => {
+    const s = read()
+    const existing = s.certCodes[meta.certId]
+    if (!existing) return
+    s.certCodes = { ...s.certCodes, [meta.certId]: { ...existing, disabled } }
+    s.auditLog = appendAudit(s, makeAuditEntry(meta.actor, disabled ? "disabled" : "enabled", meta.certId, meta.recipient))
+    write(s)
+  }, [])
+
+  /** Super Admin: release a restricted certificate (activates learner download). */
+  const releaseCourse = useCallback((courseId: string, meta?: CodeActionMeta) => {
+    const s = read()
+    if (!s.releasedCourses.includes(courseId)) {
+      s.releasedCourses = [...s.releasedCourses, courseId]
+    }
+    if (meta) {
+      s.auditLog = appendAudit(s, makeAuditEntry(meta.actor, "released", meta.certId, meta.recipient))
+    }
+    write(s)
+  }, [])
+
+  const revokeCourseRelease = useCallback((courseId: string, meta?: CodeActionMeta) => {
     const s = read()
     s.releasedCourses = s.releasedCourses.filter((id) => id !== courseId)
+    if (meta) {
+      s.auditLog = appendAudit(s, makeAuditEntry(meta.actor, "revoked", meta.certId, meta.recipient))
+    }
     write(s)
   }, [])
 
@@ -101,6 +233,9 @@ export function useProgress() {
     setCourseLessons,
     markAssessmentPassed,
     markCourseCompleted,
+    ensureCertCode,
+    regenerateCertCode,
+    setCertCodeDisabled,
     releaseCourse,
     revokeCourseRelease,
   }
