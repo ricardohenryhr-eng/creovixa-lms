@@ -178,6 +178,22 @@ export const demoUsers: (User & { password: string })[] = [
     accessExpiresAt: daysAheadISO(15),
   },
   {
+    id: "u-t",
+    name: "Priya Nair",
+    email: "trainer@creovixa.com",
+    password: "demo",
+    role: "trainer",
+    status: "active",
+    avatarColor: "#ec4899",
+    joinedAt: "2022-11-03",
+    coursesEnrolled: 3,
+    coursesCompleted: 3,
+    certificates: 3,
+    progress: 100,
+    lastLoginAt: daysAgoISO(0),
+    accessExpiresAt: daysAheadISO(15),
+  },
+  {
     id: "u-2",
     name: "Daniel Okoro",
     email: "interpreter@creovixa.com",
@@ -1043,4 +1059,47 @@ export function getAssessment(id: string) {
 
 export function findCertificate(certId: string) {
   return certificates.find((c) => c.certId.toLowerCase() === certId.toLowerCase())
+}
+
+export interface QuizAttempt {
+  id: string
+  learnerName: string
+  learnerColor: string
+  quiz: string
+  category: string
+  score: number
+  passingScore: number
+  passed: boolean
+  date: string
+}
+
+const attemptDates = ["2026-09-14", "2026-09-10", "2026-09-05", "2026-08-29", "2026-08-22", "2026-08-15"]
+
+/**
+ * Deterministic sample of quiz attempts derived from learners and assessments.
+ * Shared by the admin Quiz Results page and the Trainer dashboard so their
+ * pass-rate and score figures always agree.
+ */
+export function buildQuizAttempts(): QuizAttempt[] {
+  const learners = teamUsers.filter((u) => u.role === "interpreter" || u.role === "student")
+  const rows: QuizAttempt[] = []
+  assessments.forEach((a, ai) => {
+    learners.forEach((u, ui) => {
+      if ((ai + ui) % 2 === 0 && rows.length < 14) {
+        const score = 62 + ((ai * 9 + ui * 17) % 39) // 62–100
+        rows.push({
+          id: `${a.id}-${u.id}`,
+          learnerName: u.name,
+          learnerColor: u.avatarColor,
+          quiz: a.title,
+          category: a.category,
+          score,
+          passingScore: a.passingScore,
+          passed: score >= a.passingScore,
+          date: attemptDates[(ai + ui) % attemptDates.length],
+        })
+      }
+    })
+  })
+  return rows.sort((x, y) => (x.date < y.date ? 1 : -1))
 }

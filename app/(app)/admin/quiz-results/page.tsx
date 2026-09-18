@@ -1,49 +1,10 @@
 import { FileCheck2, CheckCircle2, Percent, Target } from "lucide-react"
 import { PageHeader, Card, StatCard, Badge, Progress, Avatar } from "@/components/ui"
-import { assessments, teamUsers } from "@/lib/data"
+import { assessments, buildQuizAttempts } from "@/lib/data"
 import { formatDate } from "@/lib/utils"
 
-const attemptDates = ["2026-09-14", "2026-09-10", "2026-09-05", "2026-08-29", "2026-08-22", "2026-08-15"]
-
-interface Attempt {
-  id: string
-  learnerName: string
-  learnerColor: string
-  quiz: string
-  category: string
-  score: number
-  passingScore: number
-  passed: boolean
-  date: string
-}
-
-/** Deterministic sample of quiz attempts derived from learners and assessments. */
-function buildAttempts(): Attempt[] {
-  const learners = teamUsers.filter((u) => u.role === "interpreter" || u.role === "student")
-  const rows: Attempt[] = []
-  assessments.forEach((a, ai) => {
-    learners.forEach((u, ui) => {
-      if ((ai + ui) % 2 === 0 && rows.length < 14) {
-        const score = 62 + ((ai * 9 + ui * 17) % 39) // 62–100
-        rows.push({
-          id: `${a.id}-${u.id}`,
-          learnerName: u.name,
-          learnerColor: u.avatarColor,
-          quiz: a.title,
-          category: a.category,
-          score,
-          passingScore: a.passingScore,
-          passed: score >= a.passingScore,
-          date: attemptDates[(ai + ui) % attemptDates.length],
-        })
-      }
-    })
-  })
-  return rows.sort((x, y) => (x.date < y.date ? 1 : -1))
-}
-
 export default function QuizResultsPage() {
-  const attempts = buildAttempts()
+  const attempts = buildQuizAttempts()
   const passedCount = attempts.filter((a) => a.passed).length
   const passRate = attempts.length ? Math.round((passedCount / attempts.length) * 100) : 0
   const avgScore = attempts.length ? Math.round(attempts.reduce((s, a) => s + a.score, 0) / attempts.length) : 0
