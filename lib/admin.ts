@@ -82,6 +82,19 @@ export function canManageAdmins(role: Role): boolean {
   return role === "super_admin"
 }
 
+/** The single Super Admin authorized to control protected certificate codes. */
+export const CERT_CONTROLLER_EMAIL = "ricardo.henry@creovixa.com"
+
+/**
+ * Whether the given account may view and control protected 40-Hour Medical
+ * certificate access codes — release, revoke, regenerate, or disable them.
+ * Restricted to the designated Super Admin (Ricardo Henry) only.
+ */
+export function isCertificateController(user: { role: Role; email: string } | null | undefined): boolean {
+  if (!user) return false
+  return user.role === "super_admin" && user.email.toLowerCase() === CERT_CONTROLLER_EMAIL
+}
+
 export function canAccessSection(role: Role, section: AdminSection): boolean {
   return roleAccess[role].includes(section)
 }

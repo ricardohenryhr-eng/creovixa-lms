@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Award, Download, X, ShieldCheck, ExternalLink, Lock, Clock } from "lucide-react"
 import { PageHeader, Card, Badge, Button } from "@/components/ui"
@@ -26,7 +26,7 @@ function addMonths(iso: string, months: number) {
 export default function CertificatesPage() {
   const { user } = useAuth()
   const recipient = user?.name ?? "Creovixa Learner"
-  const { state } = useProgress()
+  const { state, ensureCertCode } = useProgress()
   const [active, setActive] = useState<Certificate | null>(null)
 
   const rows = useMemo(() => {
@@ -39,10 +39,19 @@ export default function CertificatesPage() {
       const expired = expiresAt ? Date.now() > new Date(expiresAt).getTime() : false
       const assessmentId = courseAssessment(course.id)?.id
       const score = stat?.score ?? (assessmentId ? state.passedAssessments[assessmentId] ?? 100 : 100)
+      const certId = stat?.certId ?? certIdFor(course, state, recipient)
+
+      // A protected certificate whose access code has been disabled by the
+      // Super Admin cannot be downloaded even after it was released.
+      const codeDisabled = course.cert.restricted && (state.certCodes[certId]?.disabled ?? false)
+      const finalAccess =
+        codeDisabled && access.accessible
+          ? { ...access, accessible: false, reason: "Access disabled by administrator" }
+          : access
 
       const cert: Certificate = {
         id: course.id,
-        certId: stat?.certId ?? certIdFor(course, state, recipient),
+        certId,
         courseTitle: course.title,
         recipient,
         issuedAt,
@@ -50,9 +59,19 @@ export default function CertificatesPage() {
         score,
         status: expired ? "expired" : "valid",
       }
-      return { course, access, cert, expired }
+      return { course, access: finalAccess, cert, expired }
     })
   }, [state, recipient])
+
+  // A protected certificate's secure access code is generated automatically the
+  // moment its requirements are met. The learner never sees the code itself.
+  useEffect(() => {
+    rows.forEach(({ course, access, cert }) => {
+      if (course.cert.restricted && access.earned) {
+        ensureCertCode(cert.certId, course.id, recipient)
+      }
+    })
+  }, [rows, recipient, ensureCertCode])
 
   const earnedCount = rows.filter((r) => r.access.earned).length
 
