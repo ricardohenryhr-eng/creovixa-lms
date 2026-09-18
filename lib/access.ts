@@ -32,10 +32,19 @@ export function daysUntil(iso?: string): number | null {
 }
 
 /**
+ * Permanent accounts (the founding Super Admin) never expire and are exempt
+ * from suspension, deletion, and the inactivity lifecycle.
+ */
+export function isPermanent(user: User): boolean {
+  return user.permanent === true || user.role === "super_admin"
+}
+
+/**
  * Resolve when access expires. Prefer the stored window; otherwise derive it
  * from the last login plus the inactivity limit.
  */
 export function accessExpiry(user: User): Date | null {
+  if (isPermanent(user)) return null
   if (user.accessExpiresAt) return startOfDay(new Date(user.accessExpiresAt))
   if (user.lastLoginAt) {
     const d = startOfDay(new Date(user.lastLoginAt))
@@ -63,6 +72,8 @@ export function daysToExpiry(user: User): number | null {
  * "expired" so the rest of the app treats it consistently.
  */
 export function effectiveStatus(user: User): UserStatus {
+  // Permanent accounts are always active and cannot be locked out.
+  if (isPermanent(user)) return "active"
   if (user.status === "suspended" || user.status === "pending") return user.status
   const remaining = daysToExpiry(user)
   if (remaining !== null && remaining < 0) return "expired"
@@ -73,6 +84,20 @@ export function effectiveStatus(user: User): UserStatus {
 export function isLocked(user: User): boolean {
   const s = effectiveStatus(user)
   return s === "suspended" || s === "pending" || s === "expired"
+}
+
+/**
+ * Whether `actor` may suspend or delete `target`.
+ * - Permanent accounts (founding Super Admin) can never be suspended or deleted.
+ * - Administrator accounts (super_admin / admin) may only be managed by a Super Admin.
+ * - Everyone else may be managed by any admin who can reach this screen.
+ */
+export function canModifyAccount(actor: User | null, target: User): boolean {
+  if (isPermanent(target)) return false
+  if (target.role === "super_admin" || target.role === "admin") {
+    return actor?.role === "super_admin"
+  }
+  return true
 }
 
 export const statusLabels: Record<UserStatus, string> = {

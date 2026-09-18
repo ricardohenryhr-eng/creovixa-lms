@@ -64,7 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function authenticate(email: string, password: string): AuthResult {
     const match = demoUsers.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())
-    if (!match) return { ok: false, error: "No account found for that email." }
+    // In production only real invited users may sign in — seed/demo accounts
+    // are hidden and rejected as if they do not exist.
+    if (!match || (process.env.NODE_ENV === "production" && match.demo)) {
+      return { ok: false, error: "No account found for that email." }
+    }
     if (match.password !== password) return { ok: false, error: "Incorrect password." }
     const { password: _pw, ...safe } = match
     return { ok: true, user: safe }

@@ -27,6 +27,17 @@ export interface User {
   lastLoginAt?: string
   /** ISO date when platform access lapses if the account stays inactive. */
   accessExpiresAt?: string
+  /**
+   * Permanent accounts never expire and cannot be suspended or deleted by
+   * lower-level administrators. Reserved for the founding Super Admin.
+   */
+  permanent?: boolean
+  /**
+   * Seed/demo account. Demo accounts are usable in preview for showcasing the
+   * app but are rejected at sign-in in production — only real invited users
+   * may access the LMS there.
+   */
+  demo?: boolean
 }
 
 export type LessonType = "video" | "lecture" | "image" | "reading" | "pdf"
@@ -162,7 +173,8 @@ export const demoUsers: (User & { password: string })[] = [
     certificates: 9,
     progress: 100,
     lastLoginAt: daysAgoISO(0),
-    accessExpiresAt: daysAheadISO(15),
+    // Founding Super Admin: permanent, never expires, cannot be deleted.
+    permanent: true,
   },
   {
     id: "u-1",
@@ -203,6 +215,7 @@ export const demoUsers: (User & { password: string })[] = [
     name: "Priya Nair",
     email: "trainer@creovixa.com",
     password: "demo",
+    demo: true,
     role: "trainer",
     status: "active",
     avatarColor: "#ec4899",
@@ -219,6 +232,7 @@ export const demoUsers: (User & { password: string })[] = [
     name: "Daniel Okoro",
     email: "interpreter@creovixa.com",
     password: "demo",
+    demo: true,
     role: "interpreter",
     status: "active",
     avatarColor: "#f97316",
@@ -235,6 +249,7 @@ export const demoUsers: (User & { password: string })[] = [
     name: "Amara Khan",
     email: "student@creovixa.com",
     password: "demo",
+    demo: true,
     role: "student",
     status: "active",
     avatarColor: "#0ea5e9",
@@ -251,6 +266,7 @@ export const demoUsers: (User & { password: string })[] = [
     name: "Rosa Mendes",
     email: "expired@creovixa.com",
     password: "demo",
+    demo: true,
     role: "interpreter",
     status: "active",
     avatarColor: "#64748b",
