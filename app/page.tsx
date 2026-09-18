@@ -197,8 +197,8 @@ export default function HomePage() {
                   Ready to raise your interpreting standards?
                 </h2>
                 <p className="mt-3 max-w-xl text-pretty text-slate-300">
-                  Sign in to access your dashboard, continue your courses, and manage your team. New here? Explore the
-                  demo with a single click.
+                  Sign in to access your dashboard, continue your courses, and manage your team. Access is granted by
+                  your Creovixa administrator.
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
