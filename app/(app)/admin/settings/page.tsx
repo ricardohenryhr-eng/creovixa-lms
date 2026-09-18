@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Check } from "lucide-react"
 import { PageHeader, Card, Button, Input } from "@/components/ui"
+import { Admin2faCard } from "@/components/admin-2fa-card"
 
 const brandColors = [
   { name: "Dark Blue", hex: "#0F172A" },
@@ -76,6 +77,8 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex flex-col gap-6">
+          <Admin2faCard />
+
           <Card className="p-6">
             <h2 className="font-display text-lg font-semibold">Brand colors</h2>
             <p className="mt-1 text-sm text-muted-foreground">Creovixa primary palette.</p>
