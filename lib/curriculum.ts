@@ -1,8 +1,50 @@
-import { courses, assessments, certificates, type Course, type Assessment, type Lesson } from "@/lib/data"
+import {
+  courses,
+  assessments,
+  certificates,
+  trackLabels,
+  type Course,
+  type CourseTrack,
+  type Assessment,
+  type Lesson,
+} from "@/lib/data"
 import type { ProgressState } from "@/lib/progress"
 
-/** Courses in required learning order (foundations first). */
-export const orderedCourses: Course[] = [...courses].sort((a, b) => a.order - b.order)
+/** Track a course belongs to; courses without an explicit track are "core". */
+export function trackOf(course: Course): CourseTrack {
+  return course.track ?? "core"
+}
+
+/** Display order of tracks in catalog/listing sections. */
+const trackRank: Record<CourseTrack, number> = { core: 0, cchi: 1 }
+
+/**
+ * Courses in required learning order: grouped by track (core first), then by
+ * each course's sequence position within its track. Each track sequences
+ * independently, so CCHI courses unlock without waiting on the core track.
+ */
+export const orderedCourses: Course[] = [...courses].sort(
+  (a, b) => trackRank[trackOf(a)] - trackRank[trackOf(b)] || a.order - b.order,
+)
+
+/** Courses grouped into their tracks, ready to render as catalog sections. */
+export const coursesByTrack: { track: CourseTrack; label: string; courses: Course[] }[] = (
+  Object.keys(trackRank) as CourseTrack[]
+)
+  .sort((a, b) => trackRank[a] - trackRank[b])
+  .map((track) => ({
+    track,
+    label: trackLabels[track],
+    courses: orderedCourses.filter((c) => trackOf(c) === track),
+  }))
+  .filter((group) => group.courses.length > 0)
+
+/** The course immediately before `course` within its own track, if any. */
+export function previousCourse(course: Course): Course | undefined {
+  const inTrack = orderedCourses.filter((c) => trackOf(c) === trackOf(course))
+  const idx = inTrack.findIndex((c) => c.id === course.id)
+  return idx > 0 ? inTrack[idx - 1] : undefined
+}
 
 export function courseAssessment(courseId: string): Assessment | undefined {
   return assessments.find((a) => a.courseId === courseId)
@@ -64,11 +106,11 @@ export function assessmentUnlocked(course: Course, state: ProgressState): boolea
   return allLessonsComplete(course, state)
 }
 
-/** A course is locked until the previous course in the sequence is completed. */
+/** A course is locked until the previous course in its own track is completed. */
 export function courseUnlocked(course: Course, state: ProgressState): boolean {
-  const idx = orderedCourses.findIndex((c) => c.id === course.id)
-  if (idx <= 0) return true
-  return courseCompleted(orderedCourses[idx - 1], state)
+  const prev = previousCourse(course)
+  if (!prev) return true
+  return courseCompleted(prev, state)
 }
 
 /** Static (historical) certificate issued for this course to the given recipient. */

@@ -30,7 +30,7 @@ import { useProgress } from "@/lib/progress"
 import { getCourse } from "@/lib/data"
 import type { LessonType } from "@/lib/data"
 import {
-  orderedCourses,
+  previousCourse,
   courseAssessment,
   lessonList,
   completedLessonSet,
@@ -109,8 +109,7 @@ export default function CourseDetailPage() {
 
   // ── Course locked by sequence ────────────────────────────────────────────
   if (!unlocked) {
-    const idx = orderedCourses.findIndex((c) => c.id === course.id)
-    const prev = orderedCourses[idx - 1]
+    const prev = previousCourse(course)
     return (
       <ContentGuard>
         <BackLink />
