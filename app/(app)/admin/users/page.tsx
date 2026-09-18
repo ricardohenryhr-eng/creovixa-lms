@@ -4,12 +4,16 @@ import { useMemo, useState, type FormEvent } from "react"
 import { Search, UserPlus, MoreVertical, Ban, Trash2, BookPlus, CircleCheck, X } from "lucide-react"
 import { PageHeader, Card, Badge, Button, Input, Avatar } from "@/components/ui"
 import { teamUsers, roleLabels, courses, type User, type Role } from "@/lib/data"
+import { useAuth } from "@/lib/auth"
+import { canManageAdmins } from "@/lib/admin"
 import { cn, formatDate } from "@/lib/utils"
 
 const roleFilters: (Role | "all")[] = ["all", "admin", "interpreter", "student", "trainer"]
 const avatarColors = ["#0f172a", "#f97316", "#0ea5e9", "#8b5cf6", "#ec4899", "#14b8a6", "#f59e0b"]
 
 export default function UsersPage() {
+  const { user } = useAuth()
+  const canMakeAdmins = user ? canManageAdmins(user.role) : false
   const [users, setUsers] = useState<User[]>(teamUsers)
   const [query, setQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState<Role | "all">("all")
@@ -95,7 +99,10 @@ export default function UsersPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3"><Badge tone="muted">{roleLabels[u.role]}</Badge></td>
+                  <td className="px-4 py-3">
+                    <Badge tone="muted">{roleLabels[u.role]}</Badge>
+                    {u.title && <p className="mt-1 text-xs text-muted-foreground">{u.title}</p>}
+                  </td>
                   <td className="px-4 py-3">
                     <Badge tone={u.status === "active" ? "green" : "red"}>{u.status === "active" ? "Active" : "Suspended"}</Badge>
                   </td>
@@ -140,16 +147,32 @@ export default function UsersPage() {
         {filtered.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">No users match your filters.</p>}
       </Card>
 
-      {showAdd && <AddUserModal onClose={() => setShowAdd(false)} onAdd={addUser} />}
+      {showAdd && <AddUserModal canMakeAdmins={canMakeAdmins} onClose={() => setShowAdd(false)} onAdd={addUser} />}
       {assignFor && <AssignModal user={assignFor} onClose={() => setAssignFor(null)} />}
     </div>
   )
 }
 
-function AddUserModal({ onClose, onAdd }: { onClose: () => void; onAdd: (u: User) => void }) {
+function AddUserModal({
+  canMakeAdmins,
+  onClose,
+  onAdd,
+}: {
+  canMakeAdmins: boolean
+  onClose: () => void
+  onAdd: (u: User) => void
+}) {
+  // Only a Super Admin may create administrator accounts; everyone else who
+  // can reach this screen may invite learners and trainers only.
+  const assignableRoles: Role[] = canMakeAdmins
+    ? ["super_admin", "admin", "trainer", "interpreter", "student"]
+    : ["trainer", "interpreter", "student"]
+
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
-  const [role, setRole] = useState<Role>("student")
+  const [role, setRole] = useState<Role>(assignableRoles.includes("interpreter") ? "interpreter" : assignableRoles[0])
+
+  const isAdminRole = role === "super_admin" || role === "admin"
 
   function submit(e: FormEvent) {
     e.preventDefault()
@@ -176,10 +199,18 @@ function AddUserModal({ onClose, onAdd }: { onClose: () => void; onAdd: (u: User
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium">Role</span>
           <select value={role} onChange={(e) => setRole(e.target.value as Role)} className="h-10 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            {(["super_admin", "admin", "interpreter", "student", "trainer"] as Role[]).map((r) => (
+            {assignableRoles.map((r) => (
               <option key={r} value={r}>{roleLabels[r]}</option>
             ))}
           </select>
+          {!canMakeAdmins && (
+            <span className="text-xs text-muted-foreground">Only a Super Admin can create administrator accounts.</span>
+          )}
+          {isAdminRole && (
+            <span className="text-xs text-muted-foreground">
+              New administrators must set up two-factor authentication on first sign in.
+            </span>
+          )}
         </label>
         <div className="mt-2 flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

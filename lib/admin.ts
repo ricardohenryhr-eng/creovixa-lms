@@ -68,6 +68,20 @@ export function canAccessAdmin(role: Role): boolean {
   return roleAccess[role].length > 0
 }
 
+/**
+ * Platform administrators (Super Admin and Admin) manage the whole platform and
+ * must authenticate through the secure admin portal with two-factor auth.
+ * Trainers have limited console access but are not platform admins.
+ */
+export function isPlatformAdmin(role: Role): boolean {
+  return role === "super_admin" || role === "admin"
+}
+
+/** Only a Super Admin may create or manage other administrator accounts. */
+export function canManageAdmins(role: Role): boolean {
+  return role === "super_admin"
+}
+
 export function canAccessSection(role: Role, section: AdminSection): boolean {
   return roleAccess[role].includes(section)
 }

@@ -7,10 +7,11 @@ import { Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { Button, Input } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
+import { isPlatformAdmin } from "@/lib/admin"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login } = useAuth()
+  const { authenticate, establishSession } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [show, setShow] = useState(false)
@@ -21,12 +22,19 @@ export default function LoginPage() {
     e.preventDefault()
     setError("")
     setLoading(true)
-    const res = login(email, password)
-    if (!res.ok) {
+    const res = authenticate(email, password)
+    if (!res.ok || !res.user) {
       setError(res.error ?? "Unable to sign in.")
       setLoading(false)
       return
     }
+    // Administrators must sign in through the secure portal, which enforces
+    // two-factor authentication. Send them there instead of creating a session.
+    if (isPlatformAdmin(res.user.role)) {
+      router.push("/admin")
+      return
+    }
+    establishSession(res.user)
     router.push("/dashboard")
   }
 
