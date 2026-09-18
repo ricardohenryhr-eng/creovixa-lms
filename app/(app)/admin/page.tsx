@@ -1,9 +1,24 @@
 import Link from "next/link"
-import { Users, BookOpen, Award, BarChart3, Settings, ArrowRight, UserPlus, FileCheck2, UserCheck, BadgeCheck, ClipboardList } from "lucide-react"
+import {
+  Users,
+  BookOpen,
+  Award,
+  BarChart3,
+  Settings,
+  ArrowRight,
+  UserPlus,
+  FileCheck2,
+  UserCheck,
+  BadgeCheck,
+  ClipboardList,
+} from "lucide-react"
 import { PageHeader, Card, StatCard, Badge, Avatar } from "@/components/ui"
 import { AdminCertApprovals } from "@/components/admin-cert-approvals"
-import { teamUsers, courses, certificates, roleLabels } from "@/lib/data"
+import { getAdminStats, getAllProfiles, getEnrollmentSummary } from "@/lib/queries"
+import { roleLabels, statusLabels, type AccountStatus } from "@/lib/roles"
 import { formatDate } from "@/lib/utils"
+
+export const dynamic = "force-dynamic"
 
 const shortcuts = [
   { href: "/admin/users", label: "User management", desc: "Add, edit, suspend, and assign courses.", icon: Users },
@@ -13,23 +28,44 @@ const shortcuts = [
   { href: "/admin/certificate-release", label: "Certificate release", desc: "Release protected certificates.", icon: BadgeCheck },
   { href: "/admin/progress", label: "Training progress", desc: "Track learner advancement.", icon: ClipboardList },
   { href: "/admin/quiz-results", label: "Quiz results", desc: "Attempts, scores, and pass rates.", icon: FileCheck2 },
-  { href: "/admin/reports", label: "Reports & analytics", desc: "Completion rates, exams, and certificates.", icon: BarChart3 },
+  { href: "/admin/reports", label: "Reports & analytics", desc: "Completion rates and certificates.", icon: BarChart3 },
   { href: "/admin/settings", label: "Platform settings", desc: "Branding, notifications, and defaults.", icon: Settings },
 ]
 
-export default function AdminPage() {
-  const active = teamUsers.filter((u) => u.status === "active").length
-  const recent = [...teamUsers].sort((a, b) => (a.joinedAt < b.joinedAt ? 1 : -1)).slice(0, 5)
+const statusTone: Record<AccountStatus, "green" | "amber" | "red" | "blue"> = {
+  active: "green",
+  reactivated: "blue",
+  pending_first_login: "amber",
+  suspended: "red",
+}
+
+const avatarColors = ["#0f172a", "#f97316", "#0ea5e9", "#8b5cf6", "#ec4899", "#14b8a6", "#f59e0b"]
+function colorFor(email: string): string {
+  let h = 0
+  for (let i = 0; i < email.length; i++) h = (h * 31 + email.charCodeAt(i)) >>> 0
+  return avatarColors[h % avatarColors.length]
+}
+
+export default async function AdminPage() {
+  const [stats, profiles, summary] = await Promise.all([getAdminStats(), getAllProfiles(), getEnrollmentSummary()])
+  const recent = profiles.slice(0, 5)
 
   return (
     <div>
       <PageHeader title="Admin panel" subtitle="Manage users, monitor training, and configure the platform." />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total users" value={teamUsers.length} icon={<Users className="h-5 w-5" />} tone="blue" hint={`${active} active`} />
-        <StatCard label="Courses" value={courses.length} icon={<BookOpen className="h-5 w-5" />} tone="orange" hint="Published" />
-        <StatCard label="Certificates" value={certificates.length + 38} icon={<Award className="h-5 w-5" />} tone="green" hint="Issued this year" />
-        <StatCard label="Exams passed" value="312" icon={<FileCheck2 className="h-5 w-5" />} tone="amber" hint="87% pass rate" />
+        <StatCard label="Total users" value={stats.totalUsers} icon={<Users className="h-5 w-5" />} tone="blue" hint={`${stats.activeUsers} active · ${stats.pendingUsers} pending`} />
+        <StatCard label="Suspended users" value={stats.suspendedUsers} icon={<UserCheck className="h-5 w-5" />} tone="red" hint="Access disabled" />
+        <StatCard label="Courses" value={stats.courses} icon={<BookOpen className="h-5 w-5" />} tone="orange" hint="Published catalog" />
+        <StatCard label="Certificates" value={stats.certificates} icon={<Award className="h-5 w-5" />} tone="green" hint="Issued" />
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Enrollments" value={stats.enrollments} icon={<ClipboardList className="h-5 w-5" />} tone="muted" />
+        <StatCard label="Completed" value={stats.completedEnrollments} icon={<FileCheck2 className="h-5 w-5" />} tone="muted" />
+        <StatCard label="Completion rate" value={`${stats.completionRate}%`} icon={<BarChart3 className="h-5 w-5" />} tone="amber" />
+        <StatCard label="Active users" value={stats.activeUsers} icon={<Users className="h-5 w-5" />} tone="green" />
       </div>
 
       <div className="mt-6">
@@ -72,20 +108,28 @@ export default function AdminPage() {
                 Manage all <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
-            <div className="flex flex-col divide-y divide-border">
-              {recent.map((u) => (
-                <div key={u.id} className="flex items-center gap-3 py-3">
-                  <Avatar name={u.name} color={u.avatarColor} size={38} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{u.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{u.email}</p>
-                  </div>
-                  <Badge tone="muted">{roleLabels[u.role]}</Badge>
-                  <Badge tone={u.status === "active" ? "green" : "red"}>{u.status === "active" ? "Active" : "Suspended"}</Badge>
-                  <span className="hidden text-xs text-muted-foreground sm:block">{formatDate(u.joinedAt)}</span>
-                </div>
-              ))}
-            </div>
+            {recent.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No users yet. Create the first account in user management.</p>
+            ) : (
+              <div className="flex flex-col divide-y divide-border">
+                {recent.map((u) => {
+                  const s = summary[u.id]
+                  return (
+                    <div key={u.id} className="flex items-center gap-3 py-3">
+                      <Avatar name={u.full_name || u.email} color={colorFor(u.email)} size={38} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{u.full_name || u.email}</p>
+                        <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                      </div>
+                      {s && <span className="hidden text-xs text-muted-foreground md:block">{s.completed}/{s.assigned} done</span>}
+                      <Badge tone="muted">{roleLabels[u.role]}</Badge>
+                      <Badge tone={statusTone[u.status]}>{statusLabels[u.status]}</Badge>
+                      <span className="hidden text-xs text-muted-foreground sm:block">{formatDate(u.created_at)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </Card>
         </div>
 
