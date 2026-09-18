@@ -846,6 +846,29 @@ export const courses: Course[] = [
     modules: buildModules("CCHI Exam Preparation"),
     resources,
   },
+  {
+    id: "cchi-12",
+    slug: "mental-health-interpreting",
+    title: "Mental Health Interpreting",
+    category: "Medical",
+    track: "cchi",
+    level: "Advanced",
+    description:
+      "A complete advanced course preparing healthcare interpreters to work effectively in mental and behavioral health settings while maintaining professionalism, neutrality, confidentiality, and accuracy: an introduction to mental health services and the interpreter's role, common conditions (depression, anxiety, PTSD, bipolar disorder, schizophrenia), mental health terminology, ethical challenges, and suicide risk and crisis intervention. Includes quizzes and a 50-question final exam.",
+    instructor: "Sofia Marin",
+    lessonsCount: 17,
+    hours: 8,
+    enrolled: 480,
+    rating: 4.9,
+    progress: 0,
+    accentImage: "medical",
+    order: 12,
+    foundation: false,
+    certPrefix: "CMHI",
+    cert: oneYear,
+    modules: buildModules("Mental Health Interpreting"),
+    resources,
+  },
 ]
 
 /**
