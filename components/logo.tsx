@@ -19,6 +19,10 @@ export function Logo({ className, inverted = false }: { className?: string; inve
         alt="Creovixa Language Services"
         className="h-7 w-auto"
       />
+      <span className="ml-2.5 text-lg font-bold leading-none tracking-tight">
+        <span className="text-secondary">Creovixa</span>
+        <span className="text-primary"> LMS</span>
+      </span>
     </span>
   )
 }
