@@ -7,16 +7,6 @@ import { Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { Button, Input } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
-import { roleLabels, type Role } from "@/lib/data"
-
-const demoAccounts: { role: Role; email: string; password: string; label?: string }[] = [
-  { role: "super_admin", email: "superadmin@creovixa.com", password: "Admin123!" },
-  { role: "admin", email: "admin@creovixa.com", password: "Admin123!" },
-  { role: "trainer", email: "trainer@creovixa.com", password: "demo" },
-  { role: "interpreter", email: "interpreter@creovixa.com", password: "demo" },
-  { role: "student", email: "student@creovixa.com", password: "demo" },
-  { role: "interpreter", email: "expired@creovixa.com", password: "demo", label: "Interpreter (expired access)" },
-]
 
 export default function LoginPage() {
   const router = useRouter()
@@ -38,17 +28,6 @@ export default function LoginPage() {
       return
     }
     router.push("/dashboard")
-  }
-
-  function quick(email: string, password: string) {
-    setError("")
-    setLoading(true)
-    const res = login(email, password)
-    if (res.ok) router.push("/dashboard")
-    else {
-      setError(res.error ?? "Unable to sign in.")
-      setLoading(false)
-    }
   }
 
   return (
@@ -130,29 +109,9 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-8">
-            <div className="flex items-center gap-3">
-              <span className="h-px flex-1 bg-border" />
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">Demo accounts</span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-            <div className="mt-4 grid gap-2">
-              {demoAccounts.map((a) => (
-                <button
-                  key={a.email}
-                  onClick={() => quick(a.email, a.password)}
-                  disabled={loading}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-left text-sm transition hover:border-primary hover:bg-accent disabled:opacity-50"
-                >
-                  <span className="min-w-0">
-                    <span className="font-medium">{a.label ?? roleLabels[a.role]}</span>
-                    <span className="ml-2 truncate text-muted-foreground">{a.email}</span>
-                  </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">password: {a.password}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <p className="mt-8 text-center text-xs text-muted-foreground">
+            Creovixa LMS is a private, invitation-only platform. Access is granted by administrators.
+          </p>
         </div>
       </div>
     </div>
