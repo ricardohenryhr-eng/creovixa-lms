@@ -135,7 +135,7 @@ export interface Course {
   category: string
   /** Learning track this course belongs to; defaults to "core" when omitted. */
   track?: CourseTrack
-  level: "Beginner" | "Intermediate" | "Advanced" | "Required"
+  level: "Beginner" | "Intermediate" | "Advanced" | "Required" | "Core Interpreter Training"
   description: string
   instructor: string
   lessonsCount: number
@@ -691,12 +691,12 @@ export const courses: Course[] = [
     title: "OPI Professional Skills",
     category: "Remote Interpreting",
     track: "cchi",
-    level: "Intermediate",
+    level: "Core Interpreter Training",
     description:
-      "Audio-only call management, note-taking, and flow control for over-the-phone healthcare interpreting.",
+      "A complete professional course on performing in Over-the-Phone Interpreting (OPI) environments: call opening protocols, accuracy and message conversion, call management, customer service, ethics, and realistic role-play scenarios across medical, insurance, social services, and emergency calls. Includes practice scripts, quizzes, and a 40-question final exam.",
     instructor: "Chen Wei",
-    lessonsCount: 6,
-    hours: 5,
+    lessonsCount: 25,
+    hours: 8,
     enrolled: 760,
     rating: 4.7,
     progress: 0,
