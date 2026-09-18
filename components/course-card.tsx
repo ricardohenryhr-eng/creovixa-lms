@@ -33,7 +33,7 @@ export function CourseCard({
         )}
       </div>
       <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge tone="muted">{course.category}</Badge>
           <Badge tone="orange">{course.level}</Badge>
         </div>
