@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { demoUsers, type Role, type User } from "./data"
+import { isLocked, INACTIVITY_LIMIT_DAYS } from "./access"
 
 interface AuthState {
   user: User | null
@@ -15,6 +16,21 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null)
 
 const STORAGE_KEY = "creovixa.session"
+
+/** Mark now as the last login and grant a fresh inactivity window. */
+function refreshActivity(user: User): User {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const expires = new Date(today)
+  expires.setDate(expires.getDate() + INACTIVITY_LIMIT_DAYS)
+  const wasReactivated = user.status === "reactivated"
+  return {
+    ...user,
+    status: wasReactivated ? "reactivated" : "active",
+    lastLoginAt: today.toISOString().slice(0, 10),
+    accessExpiresAt: expires.toISOString().slice(0, 10),
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -41,7 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!match) return { ok: false, error: "No account found for that email." }
     if (match.password !== password) return { ok: false, error: "Incorrect password." }
     const { password: _pw, ...safe } = match
-    persist(safe)
+    // Signing in counts as activity: unlocked accounts get a fresh access
+    // window. Locked accounts (suspended / pending / expired) are persisted
+    // as-is so the app shell shows the lockout screen.
+    persist(isLocked(safe) ? safe : refreshActivity(safe))
     return { ok: true }
   }
 

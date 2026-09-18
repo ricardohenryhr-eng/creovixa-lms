@@ -9,11 +9,12 @@ import { Button, Input } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
 import { roleLabels, type Role } from "@/lib/data"
 
-const demoAccounts: { role: Role; email: string; password: string }[] = [
+const demoAccounts: { role: Role; email: string; password: string; label?: string }[] = [
   { role: "super_admin", email: "superadmin@creovixa.com", password: "Admin123!" },
   { role: "admin", email: "admin@creovixa.com", password: "Admin123!" },
   { role: "interpreter", email: "interpreter@creovixa.com", password: "demo" },
   { role: "student", email: "student@creovixa.com", password: "demo" },
+  { role: "interpreter", email: "expired@creovixa.com", password: "demo", label: "Interpreter (expired access)" },
 ]
 
 export default function LoginPage() {
@@ -137,13 +138,13 @@ export default function LoginPage() {
             <div className="mt-4 grid gap-2">
               {demoAccounts.map((a) => (
                 <button
-                  key={a.role}
+                  key={a.email}
                   onClick={() => quick(a.email, a.password)}
                   disabled={loading}
                   className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-left text-sm transition hover:border-primary hover:bg-accent disabled:opacity-50"
                 >
                   <span className="min-w-0">
-                    <span className="font-medium">{roleLabels[a.role]}</span>
+                    <span className="font-medium">{a.label ?? roleLabels[a.role]}</span>
                     <span className="ml-2 truncate text-muted-foreground">{a.email}</span>
                   </span>
                   <span className="shrink-0 text-xs text-muted-foreground">password: {a.password}</span>

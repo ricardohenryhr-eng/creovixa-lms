@@ -9,6 +9,7 @@ import {
   FileCheck2,
   BarChart3,
   Settings,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react"
 import type { Role } from "./data"
@@ -24,6 +25,7 @@ export type AdminSection =
   | "courses"
   | "certificates"
   | "interpreters"
+  | "access"
   | "release"
   | "progress"
   | "quiz"
@@ -43,6 +45,7 @@ export const adminNav: AdminNavItem[] = [
   { href: "/admin/courses", label: "Course Management", section: "courses", icon: BookOpen },
   { href: "/admin/certificates", label: "Certificate Management", section: "certificates", icon: Award },
   { href: "/admin/interpreters", label: "Interpreter Management", section: "interpreters", icon: UserCheck },
+  { href: "/admin/access", label: "Access Management", section: "access", icon: KeyRound },
   { href: "/admin/certificate-release", label: "Certificate Release", section: "release", icon: BadgeCheck },
   { href: "/admin/progress", label: "Training Progress", section: "progress", icon: ClipboardList },
   { href: "/admin/quiz-results", label: "Quiz Results", section: "quiz", icon: FileCheck2 },

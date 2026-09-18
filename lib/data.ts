@@ -1,6 +1,13 @@
 export type Role = "super_admin" | "admin" | "interpreter" | "student" | "trainer"
 
-export type UserStatus = "active" | "suspended"
+/**
+ * Platform access lifecycle for an account.
+ * - active / reactivated: full access.
+ * - pending: awaiting admin approval, cannot access content yet.
+ * - suspended: manually disabled by an admin.
+ * - expired: automatically locked after the inactivity limit elapsed.
+ */
+export type UserStatus = "active" | "pending" | "suspended" | "expired" | "reactivated"
 
 export interface User {
   id: string
@@ -14,6 +21,10 @@ export interface User {
   coursesCompleted: number
   certificates: number
   progress: number
+  /** ISO date of the account's most recent sign-in (undefined = never signed in). */
+  lastLoginAt?: string
+  /** ISO date when platform access lapses if the account stays inactive. */
+  accessExpiresAt?: string
 }
 
 export type LessonType = "video" | "lecture" | "image" | "reading" | "pdf"
@@ -121,6 +132,18 @@ export const roleLabels: Record<Role, string> = {
   trainer: "Trainer",
 }
 
+/** Access-control demo dates are seeded relative to load time so the
+ *  inactivity/expiry scenarios always hold regardless of the current date. */
+function daysAgoISO(days: number): string {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() - days)
+  return d.toISOString().slice(0, 10)
+}
+function daysAheadISO(days: number): string {
+  return daysAgoISO(-days)
+}
+
 export const demoUsers: (User & { password: string })[] = [
   {
     id: "u-0",
@@ -135,6 +158,8 @@ export const demoUsers: (User & { password: string })[] = [
     coursesCompleted: 12,
     certificates: 9,
     progress: 100,
+    lastLoginAt: daysAgoISO(0),
+    accessExpiresAt: daysAheadISO(15),
   },
   {
     id: "u-1",
@@ -149,6 +174,8 @@ export const demoUsers: (User & { password: string })[] = [
     coursesCompleted: 9,
     certificates: 7,
     progress: 78,
+    lastLoginAt: daysAgoISO(0),
+    accessExpiresAt: daysAheadISO(15),
   },
   {
     id: "u-2",
@@ -163,6 +190,8 @@ export const demoUsers: (User & { password: string })[] = [
     coursesCompleted: 5,
     certificates: 4,
     progress: 64,
+    lastLoginAt: daysAgoISO(2),
+    accessExpiresAt: daysAheadISO(13),
   },
   {
     id: "u-3",
@@ -177,6 +206,25 @@ export const demoUsers: (User & { password: string })[] = [
     coursesCompleted: 2,
     certificates: 2,
     progress: 41,
+    lastLoginAt: daysAgoISO(1),
+    accessExpiresAt: daysAheadISO(14),
+  },
+  {
+    id: "u-9",
+    name: "Rosa Mendes",
+    email: "expired@creovixa.com",
+    password: "demo",
+    role: "interpreter",
+    status: "active",
+    avatarColor: "#64748b",
+    joinedAt: "2023-03-18",
+    coursesEnrolled: 7,
+    coursesCompleted: 4,
+    certificates: 3,
+    progress: 58,
+    // Inactive well beyond the 15-day limit — logs in to a locked account.
+    lastLoginAt: daysAgoISO(24),
+    accessExpiresAt: daysAgoISO(9),
   },
 ]
 
@@ -194,6 +242,9 @@ export const teamUsers: User[] = [
     coursesCompleted: 8,
     certificates: 6,
     progress: 82,
+    // 11 days idle → access lapses in 4 days (inside the 5-day reminder window).
+    lastLoginAt: daysAgoISO(11),
+    accessExpiresAt: daysAheadISO(4),
   },
   {
     id: "u-5",
@@ -207,6 +258,8 @@ export const teamUsers: User[] = [
     coursesCompleted: 3,
     certificates: 3,
     progress: 100,
+    lastLoginAt: daysAgoISO(1),
+    accessExpiresAt: daysAheadISO(14),
   },
   {
     id: "u-6",
@@ -220,6 +273,8 @@ export const teamUsers: User[] = [
     coursesCompleted: 1,
     certificates: 0,
     progress: 22,
+    lastLoginAt: daysAgoISO(8),
+    accessExpiresAt: daysAheadISO(7),
   },
   {
     id: "u-7",
@@ -233,6 +288,9 @@ export const teamUsers: User[] = [
     coursesCompleted: 6,
     certificates: 5,
     progress: 71,
+    // 21 days idle → already expired and auto-locked.
+    lastLoginAt: daysAgoISO(21),
+    accessExpiresAt: daysAgoISO(6),
   },
   {
     id: "u-8",
@@ -246,6 +304,39 @@ export const teamUsers: User[] = [
     coursesCompleted: 3,
     certificates: 2,
     progress: 55,
+    // 13 days idle → access lapses in 2 days (inside the 2-day reminder window).
+    lastLoginAt: daysAgoISO(13),
+    accessExpiresAt: daysAheadISO(2),
+  },
+  {
+    id: "u-10",
+    name: "Yuki Tanaka",
+    email: "yuki.tanaka@creovixa.com",
+    role: "interpreter",
+    status: "pending",
+    avatarColor: "#22c55e",
+    joinedAt: daysAgoISO(3),
+    coursesEnrolled: 0,
+    coursesCompleted: 0,
+    certificates: 0,
+    progress: 0,
+    // Newly registered, awaiting admin approval — never signed in.
+  },
+  {
+    id: "u-11",
+    name: "Omar Farah",
+    email: "omar.farah@creovixa.com",
+    role: "interpreter",
+    status: "reactivated",
+    avatarColor: "#3b82f6",
+    joinedAt: "2023-07-11",
+    coursesEnrolled: 8,
+    coursesCompleted: 5,
+    certificates: 4,
+    progress: 63,
+    // Recently restored by an admin after a lapse.
+    lastLoginAt: daysAgoISO(0),
+    accessExpiresAt: daysAheadISO(30),
   },
 ]
 
