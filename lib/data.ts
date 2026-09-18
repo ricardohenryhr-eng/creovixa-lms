@@ -14,6 +14,8 @@ export interface User {
   name: string
   email: string
   role: Role
+  /** Optional job title shown for staff accounts, e.g. "HR Admin". */
+  title?: string
   status: UserStatus
   avatarColor: string
   joinedAt: string
@@ -147,10 +149,11 @@ function daysAheadISO(days: number): string {
 export const demoUsers: (User & { password: string })[] = [
   {
     id: "u-0",
-    name: "Elena Rossi",
-    email: "superadmin@creovixa.com",
+    name: "Ricardo Henry",
+    email: "ricardo.henry@creovixa.com",
     password: "Admin123!",
     role: "super_admin",
+    title: "Super Admin",
     status: "active",
     avatarColor: "#1e293b",
     joinedAt: "2022-09-01",
@@ -163,10 +166,11 @@ export const demoUsers: (User & { password: string })[] = [
   },
   {
     id: "u-1",
-    name: "Sofia Marin",
-    email: "admin@creovixa.com",
+    name: "Anderson Verger",
+    email: "anderson.verger@creovixa.com",
     password: "Admin123!",
     role: "admin",
+    title: "HR Admin",
     status: "active",
     avatarColor: "#0f172a",
     joinedAt: "2023-01-12",
@@ -174,6 +178,23 @@ export const demoUsers: (User & { password: string })[] = [
     coursesCompleted: 9,
     certificates: 7,
     progress: 78,
+    lastLoginAt: daysAgoISO(0),
+    accessExpiresAt: daysAheadISO(15),
+  },
+  {
+    id: "u-1b",
+    name: "Belson Bugotte",
+    email: "belson.bugotte@creovixa.com",
+    password: "Admin123!",
+    role: "admin",
+    title: "Operations Admin",
+    status: "active",
+    avatarColor: "#1d4ed8",
+    joinedAt: "2023-02-08",
+    coursesEnrolled: 10,
+    coursesCompleted: 8,
+    certificates: 6,
+    progress: 84,
     lastLoginAt: daysAgoISO(0),
     accessExpiresAt: daysAheadISO(15),
   },

@@ -4,10 +4,20 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { demoUsers, type Role, type User } from "./data"
 import { isLocked, INACTIVITY_LIMIT_DAYS } from "./access"
 
+interface AuthResult {
+  ok: boolean
+  error?: string
+  user?: User
+}
+
 interface AuthState {
   user: User | null
   loading: boolean
   login: (email: string, password: string) => { ok: boolean; error?: string }
+  /** Validate credentials without creating a session (used by the 2FA flow). */
+  authenticate: (email: string, password: string) => AuthResult
+  /** Persist a verified user as the active session. */
+  establishSession: (user: User) => void
   loginAs: (role: Role) => void
   logout: () => void
   updateUser: (patch: Partial<User>) => void
@@ -52,15 +62,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else localStorage.removeItem(STORAGE_KEY)
   }
 
-  function login(email: string, password: string) {
+  function authenticate(email: string, password: string): AuthResult {
     const match = demoUsers.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())
     if (!match) return { ok: false, error: "No account found for that email." }
     if (match.password !== password) return { ok: false, error: "Incorrect password." }
     const { password: _pw, ...safe } = match
+    return { ok: true, user: safe }
+  }
+
+  function establishSession(safe: User) {
     // Signing in counts as activity: unlocked accounts get a fresh access
     // window. Locked accounts (suspended / pending / expired) are persisted
     // as-is so the app shell shows the lockout screen.
     persist(isLocked(safe) ? safe : refreshActivity(safe))
+  }
+
+  function login(email: string, password: string) {
+    const res = authenticate(email, password)
+    if (!res.ok || !res.user) return { ok: false, error: res.error }
+    establishSession(res.user)
     return { ok: true }
   }
 
@@ -84,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginAs, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, authenticate, establishSession, loginAs, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )
