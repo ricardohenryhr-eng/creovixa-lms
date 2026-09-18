@@ -151,7 +151,15 @@ export async function bootstrapSuperAdmin(): Promise<{ ok: boolean; created: boo
     .update({ role: "super_admin", permanent: true, invited_by: "system" })
     .eq("id", userId)
   await admin.from("onboarding").upsert({ user_id: userId, status: "pending_first_login", temp_password_active: true })
-  await sendEmail(welcomeEmail({ fullName: "Ricardo Henry", email: SUPER_ADMIN_EMAIL, tempPassword, courses: [] }))
+  await sendEmail(
+    welcomeEmail({
+      fullName: "Ricardo Henry",
+      email: SUPER_ADMIN_EMAIL,
+      tempPassword,
+      courses: [],
+      invitedBy: "system",
+    }),
+  )
 
   return { ok: true, created: true, tempPassword }
 }

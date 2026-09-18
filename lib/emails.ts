@@ -93,25 +93,36 @@ export function welcomeEmail(params: {
   email: string
   tempPassword: string
   courses: string[]
+  invitedBy: string
 }): EmailMessage {
+  // Phrase the enrollment line to match the number of assigned courses.
+  let enrollmentBlock: string
+  if (params.courses.length === 0) {
+    enrollmentBlock = `Your Creovixa LMS account has been created.`
+  } else if (params.courses.length === 1) {
+    enrollmentBlock = `You have been enrolled in the following course:
+${params.courses[0]}.`
+  } else {
+    enrollmentBlock = `You have been enrolled in the following courses:
+${courseListText(params.courses)}`
+  }
+
   const body = `Hello ${params.fullName},
 
-Your Creovixa LMS account has been created successfully.
+${enrollmentBlock}
 
-Login URL:
-
+To take this course please log on to:
 ${LOGIN_URL}
 
-Email:
-${params.email}
+Your temporary login credentials:
 
-Temporary Password:
-${params.tempPassword}
+Email: ${params.email}
+Temporary Password: ${params.tempPassword}
 
-For security reasons, you must create your own password during your first login.
+For security reasons, you will be required to create your own password on first login.
 
-Assigned Courses:
-${courseListText(params.courses)}
+Invited by:
+${params.invitedBy}
 
 ${FOOTER}`
   return { to: params.email, subject: "Welcome to Creovixa LMS", body, kind: "welcome" }

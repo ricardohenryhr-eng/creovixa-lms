@@ -108,15 +108,18 @@ export async function createUser(input: {
   }
   const titles = await courseTitles(admin, uniqueCourseIds)
 
-  // Send (log) the welcome email and, when courses were assigned, the enrollment email.
-  await sendEmail(welcomeEmail({ fullName, email, tempPassword, courses: titles }))
-  if (titles.length) {
-    await sendEmail(courseAssignmentEmail({ fullName, email, courses: titles }))
-  }
+  // Single invitation email: it already contains the enrollment and the
+  // temporary credentials, so no separate course-assignment email on creation.
+  await sendEmail(
+    welcomeEmail({ fullName, email, tempPassword, courses: titles, invitedBy: auth.profile.email }),
+  )
 
   revalidatePath("/admin/users")
   revalidatePath("/admin/dashboard")
-  return { ok: true, message: `${fullName} created. A welcome email with a temporary password was recorded.` }
+  return {
+    ok: true,
+    message: `${fullName} created. A welcome email with their temporary password was sent to ${email}.`,
+  }
 }
 
 export async function assignCourses(input: { userId: string; courseIds: string[] }): Promise<ActionResult> {
