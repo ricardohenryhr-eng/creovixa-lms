@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, notFound } from "next/navigation"
 import {
@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { Card, Badge, Button, Progress } from "@/components/ui"
 import { getAssessment, getCourse } from "@/lib/data"
+import { useProgress } from "@/lib/progress"
 import { cn } from "@/lib/utils"
 
 export default function QuizPage() {
@@ -24,6 +25,8 @@ export default function QuizPage() {
 
   const course = getCourse(assessment.courseId) ?? undefined
   const total = assessment.questions.length
+  const { markAssessmentPassed } = useProgress()
+  const recordedRef = useRef(false)
 
   const [started, setStarted] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -48,6 +51,14 @@ export default function QuizPage() {
 
   const answeredCount = Object.keys(answers).length
   const passed = score >= assessment.passingScore
+
+  // Persist a passing score so the linked course can issue its certificate.
+  useEffect(() => {
+    if (submitted && passed && !recordedRef.current) {
+      recordedRef.current = true
+      markAssessmentPassed(assessment.id, score)
+    }
+  }, [submitted, passed, score, assessment.id, markAssessmentPassed])
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0")
   const ss = String(secondsLeft % 60).padStart(2, "0")
 
@@ -57,6 +68,7 @@ export default function QuizPage() {
   }
 
   function reset() {
+    recordedRef.current = false
     setStarted(false)
     setSubmitted(false)
     setAnswers({})
