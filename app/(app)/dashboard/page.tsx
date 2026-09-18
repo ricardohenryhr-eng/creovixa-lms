@@ -15,15 +15,25 @@ import {
 import { Card, Badge, Progress, Button, StatCard } from "@/components/ui"
 import { CourseVisual } from "@/components/course-visual"
 import { useAuth } from "@/lib/auth"
+import { useProgress } from "@/lib/progress"
+import { orderedCourses, lessonProgress, courseCompleted, courseUnlocked } from "@/lib/curriculum"
 import { courses, certificates, teamUsers, recentActivity, roleLabels } from "@/lib/data"
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { state } = useProgress()
   if (!user) return null
 
   const isAdmin = user.role === "admin" || user.role === "super_admin"
-  const inProgress = courses.filter((c) => c.progress > 0 && c.progress < 100)
-  const completed = courses.filter((c) => c.progress === 100)
+  const rows = orderedCourses.map((c) => ({
+    course: c,
+    pct: lessonProgress(c, state).pct,
+    completed: courseCompleted(c, state),
+    unlocked: courseUnlocked(c, state),
+  }))
+  const inProgress = rows.filter((r) => !r.completed && r.pct > 0)
+  const completed = rows.filter((r) => r.completed)
+  const continueList = rows.filter((r) => r.unlocked && !r.completed)
 
   const stats = isAdmin
     ? [
@@ -74,7 +84,7 @@ export default function DashboardPage() {
               </Link>
             </div>
             <div className="flex flex-col gap-3">
-              {(isAdmin ? courses.slice(0, 4) : inProgress.slice(0, 4)).map((c) => (
+              {(isAdmin ? rows.slice(0, 4) : continueList.slice(0, 4)).map(({ course: c, pct }) => (
                 <Link
                   key={c.id}
                   href={`/courses/${c.slug}`}
@@ -84,13 +94,18 @@ export default function DashboardPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{c.title}</p>
                     <div className="mt-2 flex items-center gap-3">
-                      <Progress value={c.progress} className="max-w-[160px]" />
-                      <span className="text-xs text-muted-foreground">{c.progress}%</span>
+                      <Progress value={pct} className="max-w-[160px]" />
+                      <span className="text-xs text-muted-foreground">{pct}%</span>
                     </div>
                   </div>
                   <PlayCircle className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:text-primary" />
                 </Link>
               ))}
+              {!isAdmin && continueList.length === 0 && (
+                <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+                  You&apos;re all caught up. Browse the catalog to start a new course.
+                </p>
+              )}
             </div>
           </Card>
 
@@ -98,7 +113,7 @@ export default function DashboardPage() {
             <Card className="mt-6 p-5">
               <h2 className="mb-4 font-display text-lg font-semibold">Completed courses</h2>
               <div className="grid gap-3 sm:grid-cols-2">
-                {completed.map((c) => (
+                {completed.map(({ course: c }) => (
                   <div key={c.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
                     <CourseVisual category={c.category} className="h-10 w-10 shrink-0 rounded-lg" />
                     <div className="min-w-0">

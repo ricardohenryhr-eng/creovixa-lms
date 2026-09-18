@@ -1,28 +1,40 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Search } from "lucide-react"
+import { Search, Info } from "lucide-react"
 import { PageHeader, Input } from "@/components/ui"
 import { CourseCard } from "@/components/course-card"
-import { courses, categories } from "@/lib/data"
+import { categories } from "@/lib/data"
+import { useProgress } from "@/lib/progress"
+import { orderedCourses, courseUnlocked, courseCompleted, lessonProgress } from "@/lib/curriculum"
 import { cn } from "@/lib/utils"
 
 export default function CoursesPage() {
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState("All")
+  const { state } = useProgress()
 
   const filtered = useMemo(() => {
-    return courses.filter((c) => {
+    return orderedCourses.filter((c) => {
       const matchesCategory = category === "All" || c.category === category
       const q = query.trim().toLowerCase()
-      const matchesQuery = !q || c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.category.toLowerCase().includes(q)
+      const matchesQuery =
+        !q ||
+        c.title.toLowerCase().includes(q) ||
+        c.description.toLowerCase().includes(q) ||
+        c.category.toLowerCase().includes(q)
       return matchesCategory && matchesQuery
     })
   }, [query, category])
 
   return (
     <div>
-      <PageHeader title="Course catalog" subtitle="Browse every certification track available to your team." />
+      <PageHeader title="Course catalog" subtitle="Complete the certification tracks in order — foundations first." />
+
+      <div className="mb-5 flex items-center gap-2 rounded-lg border border-border bg-accent/40 px-4 py-3 text-sm text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0 text-primary" />
+        Courses unlock in sequence. Finish each course to unlock the next one.
+      </div>
 
       <div className="relative mb-5 max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -60,7 +72,13 @@ export default function CoursesPage() {
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((c) => (
-            <CourseCard key={c.id} course={c} />
+            <CourseCard
+              key={c.id}
+              course={c}
+              locked={!courseUnlocked(c, state)}
+              completed={courseCompleted(c, state)}
+              progressPct={lessonProgress(c, state).pct}
+            />
           ))}
         </div>
       )}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 
-const KEY = "creovixa_progress_v1"
+const KEY = "creovixa_progress_v2"
 const EVENT = "creovixa-progress-change"
 
 export interface ProgressState {
@@ -10,9 +10,18 @@ export interface ProgressState {
   completedLessons: Record<string, string[]>
   /** assessmentId -> best score achieved */
   passedAssessments: Record<string, number>
+  /** courseId -> ISO date the course first met its completion requirements */
+  courseCompletedAt: Record<string, string>
+  /** courseIds whose restricted certificate an admin has released */
+  releasedCourses: string[]
 }
 
-const empty: ProgressState = { completedLessons: {}, passedAssessments: {} }
+const empty: ProgressState = {
+  completedLessons: {},
+  passedAssessments: {},
+  courseCompletedAt: {},
+  releasedCourses: [],
+}
 
 function read(): ProgressState {
   if (typeof window === "undefined") return empty
@@ -23,6 +32,8 @@ function read(): ProgressState {
     return {
       completedLessons: parsed.completedLessons ?? {},
       passedAssessments: parsed.passedAssessments ?? {},
+      courseCompletedAt: parsed.courseCompletedAt ?? {},
+      releasedCourses: parsed.releasedCourses ?? [],
     }
   } catch {
     return empty
@@ -63,5 +74,34 @@ export function useProgress() {
     write(s)
   }, [])
 
-  return { state, setCourseLessons, markAssessmentPassed }
+  /** Stamp the completion date the first time a course meets its requirements. */
+  const markCourseCompleted = useCallback((courseId: string) => {
+    const s = read()
+    if (s.courseCompletedAt[courseId]) return
+    s.courseCompletedAt = { ...s.courseCompletedAt, [courseId]: new Date().toISOString() }
+    write(s)
+  }, [])
+
+  /** Admin: release / revoke a restricted certificate. */
+  const releaseCourse = useCallback((courseId: string) => {
+    const s = read()
+    if (s.releasedCourses.includes(courseId)) return
+    s.releasedCourses = [...s.releasedCourses, courseId]
+    write(s)
+  }, [])
+
+  const revokeCourseRelease = useCallback((courseId: string) => {
+    const s = read()
+    s.releasedCourses = s.releasedCourses.filter((id) => id !== courseId)
+    write(s)
+  }, [])
+
+  return {
+    state,
+    setCourseLessons,
+    markAssessmentPassed,
+    markCourseCompleted,
+    releaseCourse,
+    revokeCourseRelease,
+  }
 }
