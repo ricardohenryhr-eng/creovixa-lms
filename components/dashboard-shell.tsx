@@ -10,10 +10,6 @@ import {
   Award,
   FileCheck2,
   User,
-  Users,
-  BarChart3,
-  Settings,
-  ShieldCheck,
   Bell,
   Search,
   Menu,
@@ -25,6 +21,7 @@ import { Logo } from "@/components/logo"
 import { Avatar } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
 import { roleLabels, notifications } from "@/lib/data"
+import { navForRole } from "@/lib/admin"
 import { cn } from "@/lib/utils"
 
 interface NavItem {
@@ -42,13 +39,6 @@ const baseNav: NavItem[] = [
   { href: "/profile", label: "Profile", icon: User },
 ]
 
-const adminNav: NavItem[] = [
-  { href: "/admin", label: "Admin Panel", icon: ShieldCheck },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/reports", label: "Reports", icon: BarChart3 },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
-]
-
 export function DashboardShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
   const pathname = usePathname()
@@ -57,7 +47,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const isAdmin = user?.role === "admin" || user?.role === "super_admin"
+  const adminItems = user ? navForRole(user.role) : []
   const unread = notifications.filter((n) => n.unread).length
 
   function handleLogout() {
@@ -72,12 +62,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         {baseNav.map((item) => (
           <SidebarLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
         ))}
-        {isAdmin && (
+        {adminItems.length > 0 && (
           <>
             <p className="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-wider text-sidebar-muted">
               Administration
             </p>
-            {adminNav.map((item) => (
+            {adminItems.map((item) => (
               <SidebarLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
             ))}
           </>
