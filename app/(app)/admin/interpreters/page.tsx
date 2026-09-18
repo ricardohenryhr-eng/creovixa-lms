@@ -1,9 +1,11 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { UserCheck, Award, CheckCircle2, Search, Ban } from "lucide-react"
+import Link from "next/link"
+import { UserCheck, Award, CheckCircle2, Search, Ban, KeyRound } from "lucide-react"
 import { PageHeader, Card, StatCard, Badge, Button, Input, Avatar, Progress } from "@/components/ui"
 import { teamUsers, type User } from "@/lib/data"
+import { effectiveStatus, statusLabels, statusTones, isLocked, reactivate, suspend } from "@/lib/access"
 import { formatDate } from "@/lib/utils"
 
 export default function InterpreterManagementPage() {
@@ -17,11 +19,11 @@ export default function InterpreterManagementPage() {
 
   function toggleSuspend(id: string) {
     setInterpreters((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, status: u.status === "active" ? "suspended" : "active" } : u)),
+      prev.map((u) => (u.id === id ? (isLocked(u) ? reactivate(u) : suspend(u)) : u)),
     )
   }
 
-  const activeCount = interpreters.filter((u) => u.status === "active").length
+  const activeCount = interpreters.filter((u) => !isLocked(u)).length
   const totalCerts = interpreters.reduce((s, u) => s + u.certificates, 0)
   const avgProgress = interpreters.length
     ? Math.round(interpreters.reduce((s, u) => s + u.progress, 0) / interpreters.length)
@@ -32,6 +34,13 @@ export default function InterpreterManagementPage() {
       <PageHeader
         title="Interpreter management"
         subtitle="Track certified interpreters, their readiness, and account status."
+        action={
+          <Link href="/admin/access">
+            <Button variant="outline" size="sm">
+              <KeyRound className="h-3.5 w-3.5" /> Manage access
+            </Button>
+          </Link>
+        }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -55,7 +64,7 @@ export default function InterpreterManagementPage() {
                 <p className="truncate font-display font-semibold">{u.name}</p>
                 <p className="truncate text-xs text-muted-foreground">{u.email}</p>
               </div>
-              <Badge tone={u.status === "active" ? "green" : "red"}>{u.status === "active" ? "Active" : "Suspended"}</Badge>
+              <Badge tone={statusTones[effectiveStatus(u)]}>{statusLabels[effectiveStatus(u)]}</Badge>
             </div>
 
             <div>
@@ -83,8 +92,8 @@ export default function InterpreterManagementPage() {
 
             <div className="flex items-center justify-between border-t border-border pt-3">
               <span className="text-xs text-muted-foreground">Joined {formatDate(u.joinedAt)}</span>
-              <Button size="sm" variant={u.status === "active" ? "outline" : "primary"} onClick={() => toggleSuspend(u.id)}>
-                {u.status === "active" ? <><Ban className="h-3.5 w-3.5" /> Suspend</> : <><CheckCircle2 className="h-3.5 w-3.5" /> Reactivate</>}
+              <Button size="sm" variant={isLocked(u) ? "primary" : "outline"} onClick={() => toggleSuspend(u.id)}>
+                {isLocked(u) ? <><CheckCircle2 className="h-3.5 w-3.5" /> Reactivate</> : <><Ban className="h-3.5 w-3.5" /> Suspend</>}
               </Button>
             </div>
           </Card>
