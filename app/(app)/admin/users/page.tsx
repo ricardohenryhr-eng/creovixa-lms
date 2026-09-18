@@ -1,11 +1,12 @@
 "use client"
 
 import { useMemo, useState, type FormEvent } from "react"
-import { Search, UserPlus, MoreVertical, Ban, Trash2, BookPlus, CircleCheck, X } from "lucide-react"
+import { Search, UserPlus, MoreVertical, Ban, Trash2, BookPlus, CircleCheck, X, ShieldCheck } from "lucide-react"
 import { PageHeader, Card, Badge, Button, Input, Avatar } from "@/components/ui"
 import { teamUsers, roleLabels, courses, type User, type Role } from "@/lib/data"
 import { useAuth } from "@/lib/auth"
 import { canManageAdmins } from "@/lib/admin"
+import { canModifyAccount, isPermanent } from "@/lib/access"
 import { cn, formatDate } from "@/lib/utils"
 
 const roleFilters: (Role | "all")[] = ["all", "admin", "interpreter", "student", "trainer"]
@@ -31,11 +32,15 @@ export default function UsersPage() {
   }, [users, query, roleFilter])
 
   function toggleSuspend(id: string) {
+    const target = users.find((u) => u.id === id)
+    if (!target || !canModifyAccount(user, target)) return
     setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, status: u.status === "active" ? "suspended" : "active" } : u)))
     setMenuFor(null)
   }
 
   function remove(id: string) {
+    const target = users.find((u) => u.id === id)
+    if (!target || !canModifyAccount(user, target)) return
     setUsers((prev) => prev.filter((u) => u.id !== id))
     setMenuFor(null)
   }
@@ -100,7 +105,17 @@ export default function UsersPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge tone="muted">{roleLabels[u.role]}</Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge tone="muted">{roleLabels[u.role]}</Badge>
+                      {isPermanent(u) && (
+                        <span
+                          title="Permanent account — cannot be suspended or deleted"
+                          className="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-secondary"
+                        >
+                          <ShieldCheck className="h-3 w-3" /> Permanent
+                        </span>
+                      )}
+                    </div>
                     {u.title && <p className="mt-1 text-xs text-muted-foreground">{u.title}</p>}
                   </td>
                   <td className="px-4 py-3">
@@ -125,16 +140,27 @@ export default function UsersPage() {
                         <MoreVertical className="h-4 w-4" />
                       </button>
                       {menuFor === u.id && (
-                        <div className="absolute right-0 z-10 mt-1 w-44 overflow-hidden rounded-lg border border-border bg-popover p-1 text-left shadow-lg">
+                        <div className="absolute right-0 z-10 mt-1 w-52 overflow-hidden rounded-lg border border-border bg-popover p-1 text-left shadow-lg">
                           <button onClick={() => { setAssignFor(u); setMenuFor(null) }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted">
                             <BookPlus className="h-4 w-4" /> Assign course
                           </button>
-                          <button onClick={() => toggleSuspend(u.id)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted">
-                            {u.status === "active" ? <><Ban className="h-4 w-4" /> Suspend</> : <><CircleCheck className="h-4 w-4" /> Reactivate</>}
-                          </button>
-                          <button onClick={() => remove(u.id)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-red-50">
-                            <Trash2 className="h-4 w-4" /> Delete
-                          </button>
+                          {canModifyAccount(user, u) ? (
+                            <>
+                              <button onClick={() => toggleSuspend(u.id)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted">
+                                {u.status === "active" ? <><Ban className="h-4 w-4" /> Suspend</> : <><CircleCheck className="h-4 w-4" /> Reactivate</>}
+                              </button>
+                              <button onClick={() => remove(u.id)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-red-50">
+                                <Trash2 className="h-4 w-4" /> Delete
+                              </button>
+                            </>
+                          ) : (
+                            <p className="flex items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground">
+                              <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                              {isPermanent(u)
+                                ? "Protected account — cannot be suspended or deleted."
+                                : "Only a Super Admin can manage administrator accounts."}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
