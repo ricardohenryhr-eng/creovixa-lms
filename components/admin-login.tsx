@@ -126,7 +126,7 @@ export function AdminLogin() {
       return
     }
     establishSession(verified)
-    router.replace("/admin")
+    router.replace("/admin/dashboard")
   }
 
   function submitMfa(e: FormEvent) {
@@ -162,7 +162,7 @@ export function AdminLogin() {
     setLoading(true)
     setSuperAdminPassword(newPw)
     establishSession({ ...pending, mustChangePassword: false })
-    router.replace("/admin")
+    router.replace("/admin/dashboard")
   }
 
   function backToCredentials() {
