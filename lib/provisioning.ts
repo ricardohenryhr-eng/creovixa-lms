@@ -27,6 +27,10 @@ export interface ProvisioningState {
   mustChangePassword: boolean
   /** The Super Admin's chosen password after first login (demo: plain text). */
   password: string | null
+  /** Current 6-digit two-factor verification code for the Super Admin. */
+  mfaCode: string
+  /** ISO timestamp the current 2FA code was generated / last reset. */
+  mfaGeneratedAt: string
 }
 
 function randInt(max: number): number {
@@ -36,6 +40,13 @@ function randInt(max: number): number {
     return arr[0] % max
   }
   return Math.floor(Math.random() * max)
+}
+
+/** Build a random 6-digit two-factor verification code. */
+function generateMfaCode(): string {
+  let code = ""
+  for (let i = 0; i < 6; i++) code += String(randInt(10))
+  return code
 }
 
 /** Build a strong 16-character temporary password with mixed character classes. */
@@ -61,11 +72,27 @@ function generateTempPassword(): string {
  */
 export function readProvisioning(): ProvisioningState {
   if (typeof window === "undefined") {
-    return { tempPassword: "", acknowledged: false, mustChangePassword: true, password: null }
+    return {
+      tempPassword: "",
+      acknowledged: false,
+      mustChangePassword: true,
+      password: null,
+      mfaCode: "",
+      mfaGeneratedAt: "",
+    }
   }
   try {
     const raw = window.localStorage.getItem(KEY)
-    if (raw) return JSON.parse(raw) as ProvisioningState
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<ProvisioningState>
+      // Backfill 2FA fields for records created before 2FA was provisioned.
+      if (!parsed.mfaCode) {
+        parsed.mfaCode = generateMfaCode()
+        parsed.mfaGeneratedAt = new Date().toISOString()
+        window.localStorage.setItem(KEY, JSON.stringify(parsed))
+      }
+      return parsed as ProvisioningState
+    }
   } catch {
     // fall through to fresh provisioning
   }
@@ -74,6 +101,8 @@ export function readProvisioning(): ProvisioningState {
     acknowledged: false,
     mustChangePassword: true,
     password: null,
+    mfaCode: generateMfaCode(),
+    mfaGeneratedAt: new Date().toISOString(),
   }
   window.localStorage.setItem(KEY, JSON.stringify(initial))
   return initial
@@ -108,4 +137,19 @@ export function superAdminPassword(): string {
 /** Whether the Super Admin still needs to set their own password. */
 export function superAdminMustChangePassword(): boolean {
   return readProvisioning().mustChangePassword
+}
+
+/** The Super Admin's current 6-digit two-factor verification code. */
+export function superAdminMfaCode(): string {
+  return readProvisioning().mfaCode
+}
+
+/**
+ * Reset the Super Admin's two-factor authentication: invalidate the current
+ * verification code and generate a fresh one. Returns the new code.
+ */
+export function resetSuperAdminMfa(): string {
+  const next = generateMfaCode()
+  writeProvisioning({ ...readProvisioning(), mfaCode: next, mfaGeneratedAt: new Date().toISOString() })
+  return next
 }

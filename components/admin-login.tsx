@@ -11,6 +11,7 @@ import {
   readProvisioning,
   acknowledgeTempPassword,
   setSuperAdminPassword,
+  superAdminMfaCode,
   SUPER_ADMIN_EMAIL,
   type ProvisioningState,
 } from "@/lib/provisioning"
@@ -113,7 +114,10 @@ export function AdminLogin() {
     setError("")
     if (!pending) return
     setLoading(true)
-    if (code.trim() !== DEMO_MFA_CODE) {
+    // The Super Admin verifies against the provisioned code (resettable from
+    // the admin console); other platform admins use the fixed demo code.
+    const expected = pending.email.toLowerCase() === SUPER_ADMIN_EMAIL ? superAdminMfaCode() : DEMO_MFA_CODE
+    if (code.trim() !== expected) {
       setError("Invalid authentication code. Try again.")
       setLoading(false)
       return
@@ -344,7 +348,10 @@ export function AdminLogin() {
 
                 {process.env.NODE_ENV !== "production" && (
                   <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">
-                    Demo authenticator code: <span className="font-mono font-semibold text-white">{DEMO_MFA_CODE}</span>
+                    Demo authenticator code:{" "}
+                    <span className="font-mono font-semibold text-white">
+                      {pending?.email.toLowerCase() === SUPER_ADMIN_EMAIL ? superAdminMfaCode() : DEMO_MFA_CODE}
+                    </span>
                   </p>
                 )}
               </form>
