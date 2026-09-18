@@ -1,3 +1,5 @@
+import { courseContent } from "@/lib/course-content"
+
 export type Role = "super_admin" | "admin" | "interpreter" | "student" | "trainer"
 
 /**
@@ -47,12 +49,38 @@ export interface User {
 
 export type LessonType = "video" | "lecture" | "image" | "reading" | "pdf"
 
+/** A defined key term with a plain-language professional definition. */
+export interface TermItem {
+  term: string
+  definition: string
+}
+
+/** A single knowledge-check question shown inline at the end of a lesson. */
+export interface KnowledgeQuestion {
+  id: string
+  question: string
+  options: string[]
+  answer: number
+  /** One-line explanation shown after the learner answers. */
+  explanation?: string
+}
+
 export interface Lesson {
   id: string
   title: string
   duration: string
   type: LessonType
   completed: boolean
+  /** Optional streaming video URL rendered in the lesson's video player. */
+  videoUrl?: string
+  /** What the learner should be able to do after this lesson. */
+  objectives?: string[]
+  /** The written training material, as an ordered list of prose paragraphs. */
+  content?: string[]
+  /** Key terminology introduced in this lesson. */
+  terminology?: TermItem[]
+  /** Inline knowledge check the learner must pass to complete the lesson. */
+  knowledgeCheck?: KnowledgeQuestion[]
 }
 
 export interface Module {
@@ -61,11 +89,18 @@ export interface Module {
   lessons: Lesson[]
 }
 
+export type ResourceKind = "study_guide" | "vocabulary" | "manual" | "handout"
+
 export interface Resource {
   id: string
   name: string
   size: string
   type: "pdf" | "doc" | "slides"
+  /**
+   * When set, the resource is generated on demand as a real downloadable
+   * document from the course's authored content via /api/resources.
+   */
+  kind?: ResourceKind
 }
 
 /**
@@ -116,6 +151,8 @@ export interface QuizQuestion {
   question: string
   options: string[]
   answer: number
+  /** Optional one-line rationale shown after answering. */
+  explanation?: string
 }
 
 export interface Assessment {
@@ -513,9 +550,48 @@ export const courses: Course[] = [
     modules: buildMedicalModules(),
     resources,
   },
+
+  // ── Refresher elective (unlocks after the sequence) ──
+  {
+    id: "c-12",
+    slug: "us-healthcare-interpreting-refresher",
+    title: "US Healthcare Interpreting: A Refresher Course for Remote Interpreters",
+    category: "Medical",
+    level: "Intermediate",
+    description:
+      "A focused refresher for experienced remote interpreters working in US healthcare: role and HIPAA re-anchoring, high-frequency clinical terminology, and OPI/VRI best practices. The certificate is awarded after completing the course and passing the final quiz.",
+    instructor: "Priya Nair",
+    lessonsCount: 4,
+    hours: 6,
+    enrolled: 320,
+    rating: 4.8,
+    progress: 0,
+    accentImage: "medical",
+    order: 12,
+    foundation: false,
+    certPrefix: "USHC",
+    cert: oneYear,
+    modules: buildModules("US Healthcare Interpreting Refresher"),
+    resources,
+  },
 ]
 
-export const assessments: Assessment[] = [
+/**
+ * Attach the professionally authored content (modules, lessons, resources) to
+ * each course by slug, and recompute lesson counts. This keeps course metadata
+ * above lean while lib/course-content.ts holds the real training material that
+ * the course pages render.
+ */
+for (const course of courses) {
+  const content = courseContent[course.slug]
+  if (content) {
+    course.modules = content.modules
+    course.resources = content.resources
+    course.lessonsCount = content.modules.reduce((n, m) => n + m.lessons.length, 0)
+  }
+}
+
+const seedAssessments: Assessment[] = [
   {
     id: "a-1",
     courseId: "c-1",
@@ -796,6 +872,34 @@ export const assessments: Assessment[] = [
     ],
   },
 ]
+
+/**
+ * The final-assessment list every course exposes. Courses with a hand-tuned
+ * seed quiz keep it; every other course gets a final assessment generated from
+ * its authored content so that all courses can be completed and certified.
+ */
+export const assessments: Assessment[] = (() => {
+  const seededCourseIds = new Set(seedAssessments.map((a) => a.courseId))
+  const generated: Assessment[] = []
+  for (const course of courses) {
+    if (seededCourseIds.has(course.id)) continue
+    const spec = courseContent[course.slug]?.finalAssessment
+    if (spec) {
+      generated.push({
+        id: `a-${course.id}`,
+        courseId: course.id,
+        title: spec.title,
+        category: spec.category,
+        durationMinutes: spec.durationMinutes,
+        passingScore: spec.passingScore,
+        questions: spec.questions,
+        status: "not_started",
+        bestScore: null,
+      })
+    }
+  }
+  return [...seedAssessments, ...generated]
+})()
 
 export const certificates: Certificate[] = [
   {
