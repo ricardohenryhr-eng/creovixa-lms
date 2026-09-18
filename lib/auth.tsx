@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { demoUsers, type Role, type User } from "./data"
 import { isLocked, INACTIVITY_LIMIT_DAYS } from "./access"
+import { SUPER_ADMIN_EMAIL, superAdminPassword, superAdminMustChangePassword } from "./provisioning"
 
 interface AuthResult {
   ok: boolean
@@ -68,6 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // are hidden and rejected as if they do not exist.
     if (!match || (process.env.NODE_ENV === "production" && match.demo)) {
       return { ok: false, error: "No account found for that email." }
+    }
+    // The Super Admin's credential is issued and rotated by the provisioning
+    // store, never the static seed. It reflects the temporary password until
+    // the first login, then the Super Admin's chosen password thereafter.
+    if (match.email.toLowerCase() === SUPER_ADMIN_EMAIL) {
+      if (password !== superAdminPassword()) return { ok: false, error: "Incorrect password." }
+      const { password: _pw, ...safe } = match
+      return { ok: true, user: { ...safe, mustChangePassword: superAdminMustChangePassword() } }
     }
     if (match.password !== password) return { ok: false, error: "Incorrect password." }
     const { password: _pw, ...safe } = match

@@ -38,6 +38,11 @@ export interface User {
    * may access the LMS there.
    */
   demo?: boolean
+  /**
+   * Account must set a new password before reaching the dashboard. Set for the
+   * Super Admin, whose real credential is managed by the provisioning store.
+   */
+  mustChangePassword?: boolean
 }
 
 export type LessonType = "video" | "lecture" | "image" | "reading" | "pdf"
@@ -162,9 +167,13 @@ export const demoUsers: (User & { password: string })[] = [
     id: "u-0",
     name: "Ricardo Henry",
     email: "ricardo.henry@creovixa.com",
-    password: "Admin123!",
+    // The Super Admin's real credential is issued by the provisioning store
+    // (auto-generated temp password, rotated on first login). This seed value
+    // is never a valid credential.
+    password: "provisioned::not-a-valid-credential",
     role: "super_admin",
     title: "Super Admin",
+    mustChangePassword: true,
     status: "active",
     avatarColor: "#1e293b",
     joinedAt: "2022-09-01",
