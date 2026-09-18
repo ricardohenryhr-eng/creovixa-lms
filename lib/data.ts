@@ -785,10 +785,10 @@ export const courses: Course[] = [
     track: "cchi",
     level: "Intermediate",
     description:
-      "Cultural mediation, health beliefs, and transparent handling of culturally specific meaning without stepping outside the interpreter role.",
+      "A complete professional course on how culture impacts communication, healthcare beliefs, patient behavior, and provider interactions: understanding culture and cultural identity, cultural barriers to care, the interpreter's role in cultural mediation, working with special populations, and realistic case studies with cultural misunderstandings and resolution exercises. Includes quizzes and a 30-question final exam.",
     instructor: "Priya Nair",
-    lessonsCount: 5,
-    hours: 4,
+    lessonsCount: 18,
+    hours: 6,
     enrolled: 600,
     rating: 4.8,
     progress: 0,
