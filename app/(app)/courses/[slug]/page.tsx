@@ -9,7 +9,7 @@ import {
   FileText,
   BookOpen,
   ImageIcon,
-  Eye,
+  Download,
   Lock,
   CheckCircle2,
   Circle,
@@ -23,17 +23,12 @@ import {
 import { Card, Badge, Progress, Button } from "@/components/ui"
 import { CourseVisual } from "@/components/course-visual"
 import { Logo } from "@/components/logo"
-import {
-  ContentGuard,
-  ProtectedNotice,
-  ProtectedVideoPlayer,
-  ProtectedDocumentViewer,
-  type ViewerKind,
-} from "@/components/content-protection"
+import { ContentGuard } from "@/components/content-protection"
+import { LessonViewer } from "@/components/lesson-viewer"
 import { useAuth } from "@/lib/auth"
 import { useProgress } from "@/lib/progress"
 import { getCourse } from "@/lib/data"
-import type { Lesson, LessonType } from "@/lib/data"
+import type { LessonType } from "@/lib/data"
 import {
   orderedCourses,
   courseAssessment,
@@ -65,13 +60,6 @@ const typeLabel: Record<LessonType, string> = {
   pdf: "Document",
 }
 
-function viewerKindFor(type: LessonType): ViewerKind {
-  if (type === "image") return "image"
-  if (type === "lecture") return "lecture"
-  if (type === "pdf") return "pdf"
-  return "reading"
-}
-
 export default function CourseDetailPage() {
   const params = useParams<{ slug: string }>()
   const course = getCourse(params.slug)
@@ -85,11 +73,9 @@ export default function CourseDetailPage() {
   const lessons = useMemo(() => lessonList(course), [course])
   const completedSet = completedLessonSet(course, state)
 
-  const videoLessons = lessons.filter((l) => l.type === "video")
-  const [currentVideoId, setCurrentVideoId] = useState(videoLessons[0]?.id)
-  const currentVideo = lessons.find((l) => l.id === currentVideoId) ?? videoLessons[0]
-
-  const [viewerLesson, setViewerLesson] = useState<Lesson | null>(null)
+  const [currentLessonId, setCurrentLessonId] = useState(lessons[0]?.id)
+  const currentIndex = Math.max(0, lessons.findIndex((l) => l.id === currentLessonId))
+  const currentLesson = lessons[currentIndex] ?? lessons[0]
 
   const progressPct = Math.round((completedSet.size / lessons.length) * 100)
   const assessment = courseAssessment(course.id)
@@ -110,20 +96,15 @@ export default function CourseDetailPage() {
   function markComplete(id: string) {
     if (completedSet.has(id)) return
     setCourseLessons(course.id, [...completedSet, id])
+    // Advance to the next lesson once this one is complete.
+    const next = lessons[lessons.findIndex((l) => l.id === id) + 1]
+    if (next) setCurrentLessonId(next.id)
   }
 
-  function onVideoComplete() {
-    if (!currentVideo) return
-    markComplete(currentVideo.id)
-    // Advance the player to the next video lesson, if any.
-    const nextVideo = videoLessons.find((l) => !completedSet.has(l.id) && l.id !== currentVideo.id)
-    if (nextVideo) setCurrentVideoId(nextVideo.id)
-  }
-
-  function openLesson(l: Lesson) {
-    if (!lessonUnlocked(course, l.id, state)) return
-    if (l.type === "video") setCurrentVideoId(l.id)
-    else setViewerLesson(l)
+  function selectLesson(id: string) {
+    if (!lessonUnlocked(course, id, state)) return
+    setCurrentLessonId(id)
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   // ── Course locked by sequence ────────────────────────────────────────────
@@ -185,26 +166,21 @@ export default function CourseDetailPage() {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        {/* Curriculum */}
+        {/* Lesson viewer + curriculum */}
         <div className="lg:col-span-2">
-          {currentVideo && (
-            <>
-              <div className="mb-3">
-                <ProtectedVideoPlayer
-                  key={currentVideo.id}
-                  title={currentVideo.title}
-                  viewer={viewer}
-                  completed={completedSet.has(currentVideo.id)}
-                  onComplete={onVideoComplete}
-                />
-              </div>
-              <div className="mb-6">
-                <ProtectedNotice text="Streaming only. Downloading, seeking, and fast-forwarding are disabled — each video must be watched in full to unlock the next lesson." />
-              </div>
-            </>
+          {currentLesson && (
+            <LessonViewer
+              key={currentLesson.id}
+              lesson={currentLesson}
+              viewer={viewer}
+              completed={completedSet.has(currentLesson.id)}
+              onComplete={() => markComplete(currentLesson.id)}
+              index={currentIndex}
+              total={lessons.length}
+            />
           )}
 
-          <Card className="p-5 sm:p-6">
+          <Card className="mt-6 p-5 sm:p-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-display text-lg font-semibold">Course content</h2>
               <span className="text-xs text-muted-foreground">Complete lessons in order</span>
@@ -221,11 +197,11 @@ export default function CourseDetailPage() {
                       const Icon = lessonIcon[l.type]
                       const done = completedSet.has(l.id)
                       const isUnlocked = lessonUnlocked(course, l.id, state)
-                      const active = l.id === currentVideo?.id && l.type === "video"
+                      const active = l.id === currentLesson?.id
                       return (
                         <li key={l.id} className={active ? "bg-accent/40" : undefined}>
                           <button
-                            onClick={() => openLesson(l)}
+                            onClick={() => selectLesson(l.id)}
                             disabled={!isUnlocked}
                             className="flex w-full items-center gap-3 px-4 py-3 text-left disabled:cursor-not-allowed"
                           >
@@ -239,7 +215,7 @@ export default function CourseDetailPage() {
                               )}
                             </span>
                             <Icon className={isUnlocked ? "h-4 w-4 shrink-0 text-muted-foreground" : "h-4 w-4 shrink-0 text-muted-foreground/50"} />
-                            <span className={isUnlocked ? (done ? "flex-1 text-sm text-muted-foreground" : "flex-1 text-sm") : "flex-1 text-sm text-muted-foreground/50"}>
+                            <span className={isUnlocked ? (done ? "flex-1 text-sm text-muted-foreground" : active ? "flex-1 text-sm font-medium" : "flex-1 text-sm") : "flex-1 text-sm text-muted-foreground/50"}>
                               {l.title}
                             </span>
                             <Badge tone="muted">{typeLabel[l.type]}</Badge>
@@ -296,31 +272,29 @@ export default function CourseDetailPage() {
             </Card>
           )}
 
-          {/* View-only supplementary materials — no downloads */}
+          {/* Downloadable course materials */}
           <Card className="p-5">
             <h3 className="mb-1 font-display font-semibold">Course materials</h3>
-            <p className="mb-3 text-xs text-muted-foreground">Open documents in the protected viewer.</p>
+            <p className="mb-3 text-xs text-muted-foreground">Downloadable study documents for this course.</p>
             <ul className="flex flex-col gap-2">
               {course.resources.map((r) => (
                 <li key={r.id}>
-                  <button
-                    onClick={() => setViewerLesson({ id: `res-${r.id}`, title: r.name, duration: r.size, type: "pdf", completed: false })}
+                  <a
+                    href={r.kind ? `/api/resources/${course.slug}/${r.kind}` : undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex w-full items-center gap-3 rounded-lg border border-border px-3 py-2.5 text-left transition hover:border-primary hover:bg-accent/30"
                   >
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">{r.name}</span>
-                      <span className="text-xs text-muted-foreground">{r.size} · view only</span>
+                      <span className="text-xs text-muted-foreground">PDF · download</span>
                     </span>
-                    <Eye className="h-4 w-4 shrink-0 text-primary" />
-                  </button>
+                    <Download className="h-4 w-4 shrink-0 text-primary" />
+                  </a>
                 </li>
               ))}
             </ul>
-            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-              <Lock className="h-3.5 w-3.5 text-primary" />
-              Downloads are disabled to protect course content.
-            </div>
           </Card>
 
           {/* Certificate gate — rules depend on the course's cert configuration */}
@@ -383,17 +357,6 @@ export default function CourseDetailPage() {
           </Card>
         </div>
       </div>
-
-      {viewerLesson && (
-        <ProtectedDocumentViewer
-          name={viewerLesson.title.match(/\.[a-z]+$/i) ? viewerLesson.title : `${viewerLesson.title}.pdf`}
-          viewer={viewer}
-          kind={viewerKindFor(viewerLesson.type)}
-          reviewed={completedSet.has(viewerLesson.id)}
-          onReviewed={viewerLesson.id.startsWith("res-") ? undefined : () => markComplete(viewerLesson.id)}
-          onClose={() => setViewerLesson(null)}
-        />
-      )}
     </ContentGuard>
   )
 }
