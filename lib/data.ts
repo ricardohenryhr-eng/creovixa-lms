@@ -16,11 +16,13 @@ export interface User {
   progress: number
 }
 
+export type LessonType = "video" | "lecture" | "image" | "reading" | "pdf"
+
 export interface Lesson {
   id: string
   title: string
   duration: string
-  type: "video" | "pdf" | "reading"
+  type: LessonType
   completed: boolean
 }
 
@@ -37,6 +39,24 @@ export interface Resource {
   type: "pdf" | "doc" | "slides"
 }
 
+/**
+ * Governs how a course's certificate is issued and accessed.
+ * - validityMonths: null means the certificate never expires.
+ * - requiresLessonCompletion: false means the certificate is awarded on
+ *   passing the final quiz alone (no full course completion required).
+ * - adminReleaseOnly / releaseAfterMonths / restricted describe the protected
+ *   Medical Interpreter certificate that only an admin can release, and only
+ *   after a waiting period.
+ */
+export interface CertRule {
+  validityMonths: number | null
+  downloadable: boolean
+  requiresLessonCompletion: boolean
+  restricted?: boolean
+  adminReleaseOnly?: boolean
+  releaseAfterMonths?: number
+}
+
 export interface Course {
   id: string
   slug: string
@@ -51,6 +71,13 @@ export interface Course {
   rating: number
   progress: number
   accentImage: string
+  /** Position in the required learning sequence (1 = first). */
+  order: number
+  /** Foundation courses appear first and must be completed before others. */
+  foundation: boolean
+  /** Prefix used to build/match this course's certificate id (e.g. MED). */
+  certPrefix: string
+  cert: CertRule
   modules: Module[]
   resources: Resource[]
 }
@@ -80,6 +107,7 @@ export interface Certificate {
   courseTitle: string
   recipient: string
   issuedAt: string
+  /** Empty string means the certificate does not expire. */
   expiresAt: string
   score: number
   status: "valid" | "expired"
@@ -209,6 +237,7 @@ export const teamUsers: User[] = [
 
 export const categories = [
   "All",
+  "Foundation",
   "Medical",
   "Legal",
   "Immigration",
@@ -219,37 +248,6 @@ export const categories = [
   "Ethics",
 ]
 
-function buildModules(topic: string): Module[] {
-  return [
-    {
-      id: "m1",
-      title: "Foundations",
-      lessons: [
-        { id: "l1", title: `Introduction to ${topic}`, duration: "12:40", type: "video", completed: true },
-        { id: "l2", title: "Core terminology & glossary", duration: "18:05", type: "video", completed: true },
-        { id: "l3", title: "Reference handbook", duration: "PDF", type: "pdf", completed: false },
-      ],
-    },
-    {
-      id: "m2",
-      title: "Applied Practice",
-      lessons: [
-        { id: "l4", title: "Live scenario walkthrough", duration: "24:12", type: "video", completed: false },
-        { id: "l5", title: "Role-play transcripts", duration: "Reading", type: "reading", completed: false },
-        { id: "l6", title: "Practice worksheet", duration: "PDF", type: "pdf", completed: false },
-      ],
-    },
-    {
-      id: "m3",
-      title: "Assessment Prep",
-      lessons: [
-        { id: "l7", title: "Common pitfalls & review", duration: "15:30", type: "video", completed: false },
-        { id: "l8", title: "Final knowledge check", duration: "Quiz", type: "reading", completed: false },
-      ],
-    },
-  ]
-}
-
 const resources: Resource[] = [
   { id: "r1", name: "Course Handbook.pdf", size: "2.4 MB", type: "pdf" },
   { id: "r2", name: "Terminology Glossary.pdf", size: "1.1 MB", type: "pdf" },
@@ -257,79 +255,177 @@ const resources: Resource[] = [
   { id: "r4", name: "Lecture Slides.pptx", size: "5.2 MB", type: "slides" },
 ]
 
+/** Standard module set covering all four learning-material types. */
+function buildModules(topic: string): Module[] {
+  return [
+    {
+      id: "m1",
+      title: "Foundations",
+      lessons: [
+        { id: "l1", title: `Introduction to ${topic}`, duration: "12:40", type: "video", completed: false },
+        { id: "l2", title: "Core concepts (lecture)", duration: "18:05", type: "lecture", completed: false },
+        { id: "l3", title: "Terminology in context", duration: "Image", type: "image", completed: false },
+        { id: "l4", title: "Reference handbook", duration: "Reading", type: "reading", completed: false },
+      ],
+    },
+    {
+      id: "m2",
+      title: "Applied Practice",
+      lessons: [
+        { id: "l5", title: "Live scenario walkthrough", duration: "24:12", type: "video", completed: false },
+        { id: "l6", title: "Role-play transcripts", duration: "Reading", type: "reading", completed: false },
+        { id: "l7", title: "Common pitfalls & review", duration: "15:30", type: "video", completed: false },
+      ],
+    },
+  ]
+}
+
+/** Larger program for the 40-hour Medical Interpreter capstone. */
+function buildMedicalModules(): Module[] {
+  return [
+    {
+      id: "m1",
+      title: "Unit 1 · Role & Ethics of the Medical Interpreter",
+      lessons: [
+        { id: "l1", title: "The interpreter's role in healthcare", duration: "16:20", type: "video", completed: false },
+        { id: "l2", title: "Code of ethics & standards (lecture)", duration: "22:10", type: "lecture", completed: false },
+        { id: "l3", title: "Interpreter positioning diagrams", duration: "Image", type: "image", completed: false },
+        { id: "l4", title: "National standards handbook", duration: "Reading", type: "reading", completed: false },
+      ],
+    },
+    {
+      id: "m2",
+      title: "Unit 2 · Clinical Terminology & Body Systems",
+      lessons: [
+        { id: "l5", title: "Medical terminology foundations", duration: "28:45", type: "video", completed: false },
+        { id: "l6", title: "Body systems illustrated", duration: "Image", type: "image", completed: false },
+        { id: "l7", title: "Anatomy & pharmacology glossary", duration: "Reading", type: "reading", completed: false },
+      ],
+    },
+    {
+      id: "m3",
+      title: "Unit 3 · Modes of Interpreting & Encounter Management",
+      lessons: [
+        { id: "l8", title: "Consecutive, simultaneous & sight translation", duration: "31:00", type: "video", completed: false },
+        { id: "l9", title: "Managing the clinical encounter (lecture)", duration: "24:30", type: "lecture", completed: false },
+        { id: "l10", title: "Triadic encounter transcripts", duration: "Reading", type: "reading", completed: false },
+      ],
+    },
+    {
+      id: "m4",
+      title: "Unit 4 · Specialized Settings & Final Practicum",
+      lessons: [
+        { id: "l11", title: "Mental health, oncology & emergency settings", duration: "26:15", type: "video", completed: false },
+        { id: "l12", title: "Cultural mediation case studies", duration: "Reading", type: "reading", completed: false },
+        { id: "l13", title: "Final practicum walkthrough", duration: "33:40", type: "video", completed: false },
+      ],
+    },
+  ]
+}
+
+const oneYear: CertRule = { validityMonths: 12, downloadable: true, requiresLessonCompletion: true }
+const oneYearQuizOnly: CertRule = { validityMonths: 12, downloadable: true, requiresLessonCompletion: false }
+const medicalCert: CertRule = {
+  validityMonths: null,
+  downloadable: false,
+  requiresLessonCompletion: true,
+  restricted: true,
+  adminReleaseOnly: true,
+  releaseAfterMonths: 6,
+}
+
 export const courses: Course[] = [
+  // ── Foundation certification courses (must be completed first, in order) ──
   {
-    id: "c-1",
-    slug: "medical-interpretation",
-    title: "Medical Interpretation Certification",
-    category: "Medical",
-    level: "Advanced",
+    id: "c-10",
+    slug: "code-of-conduct",
+    title: "Code of Conduct",
+    category: "Foundation",
+    level: "Beginner",
     description:
-      "Master clinical terminology, patient-provider dynamics, and the protocols required to interpret accurately in hospitals, clinics, and telehealth settings.",
-    instructor: "Priya Nair",
-    lessonsCount: 24,
-    hours: 18,
-    enrolled: 1240,
+      "The professional conduct, integrity, and behavioral standards every Creovixa interpreter agrees to uphold. Certificate is awarded on passing the final quiz.",
+    instructor: "Anderson Verger",
+    lessonsCount: 7,
+    hours: 3,
+    enrolled: 2600,
     rating: 4.9,
-    progress: 72,
-    accentImage: "medical",
-    modules: buildModules("Medical Interpretation"),
-    resources,
-  },
-  {
-    id: "c-2",
-    slug: "legal-interpretation",
-    title: "Legal Interpretation Fundamentals",
-    category: "Legal",
-    level: "Advanced",
-    description:
-      "Courtroom procedure, legal terminology, sight translation, and the ethical standards demanded of certified legal interpreters.",
-    instructor: "Priya Nair",
-    lessonsCount: 20,
-    hours: 16,
-    enrolled: 980,
-    rating: 4.8,
-    progress: 40,
-    accentImage: "legal",
-    modules: buildModules("Legal Interpretation"),
-    resources,
-  },
-  {
-    id: "c-3",
-    slug: "immigration-interpretation",
-    title: "Immigration Interpretation",
-    category: "Immigration",
-    level: "Intermediate",
-    description:
-      "Interpret confidently across asylum interviews, USCIS appointments, and immigration hearings with cultural sensitivity.",
-    instructor: "Daniel Okoro",
-    lessonsCount: 16,
-    hours: 12,
-    enrolled: 640,
-    rating: 4.7,
     progress: 0,
-    accentImage: "immigration",
-    modules: buildModules("Immigration Interpretation"),
+    accentImage: "ethics",
+    order: 1,
+    foundation: true,
+    certPrefix: "COC",
+    cert: oneYearQuizOnly,
+    modules: buildModules("the Code of Conduct"),
     resources,
   },
   {
-    id: "c-4",
-    slug: "government-interpretation",
-    title: "Government & Public Sector Interpretation",
-    category: "Government",
-    level: "Intermediate",
+    id: "c-8",
+    slug: "hipaa-fraud-awareness",
+    title: "HIPAA & Fraud Awareness",
+    category: "Compliance",
+    level: "Beginner",
     description:
-      "Serve public agencies, social services, and civic institutions with precise, neutral, and compliant interpretation.",
+      "Protect patient privacy, handle protected health information correctly, and recognize and prevent fraud, waste, and abuse. Certificate is awarded after completing the course and passing the final quiz.",
     instructor: "Sofia Marin",
-    lessonsCount: 14,
-    hours: 10,
-    enrolled: 410,
-    rating: 4.6,
+    lessonsCount: 7,
+    hours: 4,
+    enrolled: 1870,
+    rating: 4.9,
     progress: 0,
-    accentImage: "government",
-    modules: buildModules("Government Interpretation"),
+    accentImage: "hipaa",
+    order: 2,
+    foundation: true,
+    certPrefix: "HIPAA",
+    cert: oneYear,
+    modules: buildModules("HIPAA & Fraud Awareness"),
     resources,
   },
+  {
+    id: "c-11",
+    slug: "compliance-training",
+    title: "Compliance Training",
+    category: "Compliance",
+    level: "Beginner",
+    description:
+      "Regulatory requirements, reporting obligations, and organizational compliance policies for language-services professionals. Certificate is awarded on passing the final quiz.",
+    instructor: "Sofia Marin",
+    lessonsCount: 7,
+    hours: 3,
+    enrolled: 1990,
+    rating: 4.8,
+    progress: 0,
+    accentImage: "hipaa",
+    order: 3,
+    foundation: true,
+    certPrefix: "COMP",
+    cert: oneYearQuizOnly,
+    modules: buildModules("Compliance"),
+    resources,
+  },
+  {
+    id: "c-9",
+    slug: "ethics-and-standards",
+    title: "Ethics & Standards of Practice",
+    category: "Ethics",
+    level: "Beginner",
+    description:
+      "The professional code of ethics, impartiality, confidentiality, and role boundaries every interpreter must uphold.",
+    instructor: "Priya Nair",
+    lessonsCount: 7,
+    hours: 5,
+    enrolled: 2440,
+    rating: 4.9,
+    progress: 0,
+    accentImage: "ethics",
+    order: 4,
+    foundation: true,
+    certPrefix: "ETH",
+    cert: oneYear,
+    modules: buildModules("Ethics & Standards"),
+    resources,
+  },
+
+  // ── Interpreting skill courses (unlock after foundations) ──
   {
     id: "c-5",
     slug: "customer-service-interpretation",
@@ -339,12 +435,16 @@ export const courses: Course[] = [
     description:
       "Handle contact-center and business support calls with clarity, tone management, and efficient turn-taking.",
     instructor: "Chen Wei",
-    lessonsCount: 12,
+    lessonsCount: 7,
     hours: 8,
     enrolled: 1520,
     rating: 4.7,
-    progress: 100,
+    progress: 0,
     accentImage: "customer",
+    order: 5,
+    foundation: false,
+    certPrefix: "CS",
+    cert: oneYear,
     modules: buildModules("Customer Service Interpretation"),
     resources,
   },
@@ -357,12 +457,16 @@ export const courses: Course[] = [
     description:
       "Build the audio-only skills, call flow discipline, and note-taking techniques essential for over-the-phone interpreting.",
     instructor: "Chen Wei",
-    lessonsCount: 10,
+    lessonsCount: 7,
     hours: 6,
     enrolled: 2100,
     rating: 4.8,
-    progress: 55,
+    progress: 0,
     accentImage: "opi",
+    order: 6,
+    foundation: false,
+    certPrefix: "OPI",
+    cert: oneYear,
     modules: buildModules("OPI"),
     resources,
   },
@@ -375,49 +479,107 @@ export const courses: Course[] = [
     description:
       "Camera presence, platform tools, and positioning for effective video remote interpreting across industries.",
     instructor: "Daniel Okoro",
-    lessonsCount: 11,
+    lessonsCount: 7,
     hours: 7,
     enrolled: 1330,
     rating: 4.7,
     progress: 0,
     accentImage: "vri",
+    order: 7,
+    foundation: false,
+    certPrefix: "VRI",
+    cert: oneYear,
     modules: buildModules("VRI"),
     resources,
   },
   {
-    id: "c-8",
-    slug: "hipaa-compliance",
-    title: "HIPAA Compliance for Interpreters",
-    category: "Compliance",
-    level: "Beginner",
+    id: "c-3",
+    slug: "immigration-interpretation",
+    title: "Immigration Interpretation",
+    category: "Immigration",
+    level: "Intermediate",
     description:
-      "Protect patient privacy and handle protected health information correctly in every medical interpreting encounter.",
-    instructor: "Sofia Marin",
-    lessonsCount: 8,
-    hours: 4,
-    enrolled: 1870,
-    rating: 4.9,
-    progress: 100,
-    accentImage: "hipaa",
-    modules: buildModules("HIPAA Compliance"),
+      "Interpret confidently across asylum interviews, USCIS appointments, and immigration hearings with cultural sensitivity.",
+    instructor: "Daniel Okoro",
+    lessonsCount: 7,
+    hours: 12,
+    enrolled: 640,
+    rating: 4.7,
+    progress: 0,
+    accentImage: "immigration",
+    order: 8,
+    foundation: false,
+    certPrefix: "IMM",
+    cert: oneYear,
+    modules: buildModules("Immigration Interpretation"),
     resources,
   },
   {
-    id: "c-9",
-    slug: "ethics-and-standards",
-    title: "Ethics & Standards of Practice",
-    category: "Ethics",
-    level: "Beginner",
+    id: "c-4",
+    slug: "government-interpretation",
+    title: "Government & Public Sector Interpretation",
+    category: "Government",
+    level: "Intermediate",
     description:
-      "The professional code of ethics, impartiality, confidentiality, and role boundaries every interpreter must uphold.",
+      "Serve public agencies, social services, and civic institutions with precise, neutral, and compliant interpretation.",
+    instructor: "Sofia Marin",
+    lessonsCount: 7,
+    hours: 10,
+    enrolled: 410,
+    rating: 4.6,
+    progress: 0,
+    accentImage: "government",
+    order: 9,
+    foundation: false,
+    certPrefix: "GOV",
+    cert: oneYear,
+    modules: buildModules("Government Interpretation"),
+    resources,
+  },
+  {
+    id: "c-2",
+    slug: "legal-interpretation",
+    title: "Legal Interpretation Fundamentals",
+    category: "Legal",
+    level: "Advanced",
+    description:
+      "Courtroom procedure, legal terminology, sight translation, and the ethical standards demanded of certified legal interpreters.",
     instructor: "Priya Nair",
-    lessonsCount: 9,
-    hours: 5,
-    enrolled: 2440,
+    lessonsCount: 7,
+    hours: 16,
+    enrolled: 980,
+    rating: 4.8,
+    progress: 0,
+    accentImage: "legal",
+    order: 10,
+    foundation: false,
+    certPrefix: "LEG",
+    cert: oneYear,
+    modules: buildModules("Legal Interpretation"),
+    resources,
+  },
+
+  // ── Capstone: protected, restricted Medical Interpreter certificate ──
+  {
+    id: "c-1",
+    slug: "medical-interpreter-training-40h",
+    title: "40-Hour Medical Interpreter Training",
+    category: "Medical",
+    level: "Advanced",
+    description:
+      "The full 40-hour medical interpreter program — videos, lectures, illustrated materials, readings, and a final assessment. Only one final Medical Interpreter Certificate is issued for the entire program. The certificate never expires, is protected, and is released only by an administrator six months after completion.",
+    instructor: "Priya Nair",
+    lessonsCount: 13,
+    hours: 40,
+    enrolled: 1240,
     rating: 4.9,
-    progress: 30,
-    accentImage: "ethics",
-    modules: buildModules("Ethics & Standards"),
+    progress: 0,
+    accentImage: "medical",
+    order: 11,
+    foundation: false,
+    certPrefix: "MED",
+    cert: medicalCert,
+    modules: buildMedicalModules(),
     resources,
   },
 ]
@@ -426,12 +588,12 @@ export const assessments: Assessment[] = [
   {
     id: "a-1",
     courseId: "c-1",
-    title: "Medical Interpretation Final Exam",
+    title: "40-Hour Medical Interpreter — Final Assessment",
     category: "Medical",
     durationMinutes: 45,
     passingScore: 80,
-    status: "passed",
-    bestScore: 92,
+    status: "not_started",
+    bestScore: null,
     questions: [
       {
         id: "q1",
@@ -539,12 +701,12 @@ export const assessments: Assessment[] = [
   {
     id: "a-3",
     courseId: "c-8",
-    title: "HIPAA Compliance Quiz",
+    title: "HIPAA & Fraud Awareness Quiz",
     category: "Compliance",
     durationMinutes: 20,
-    passingScore: 75,
-    status: "passed",
-    bestScore: 88,
+    passingScore: 80,
+    status: "not_started",
+    bestScore: null,
     questions: [
       {
         id: "q1",
@@ -565,6 +727,17 @@ export const assessments: Assessment[] = [
       },
       {
         id: "q3",
+        question: "Suspected fraud, waste, or abuse should be:",
+        options: [
+          "Kept quiet to avoid conflict",
+          "Reported through the proper compliance channels",
+          "Handled only if a patient complains",
+          "Ignored unless it is large",
+        ],
+        answer: 1,
+      },
+      {
+        id: "q4",
         question: "A HIPAA breach should be:",
         options: [
           "Kept quiet",
@@ -582,9 +755,9 @@ export const assessments: Assessment[] = [
     title: "Ethics & Standards Knowledge Check",
     category: "Ethics",
     durationMinutes: 25,
-    passingScore: 75,
-    status: "failed",
-    bestScore: 62,
+    passingScore: 80,
+    status: "not_started",
+    bestScore: null,
     questions: [
       {
         id: "q1",
@@ -616,28 +789,103 @@ export const assessments: Assessment[] = [
       },
     ],
   },
+  {
+    id: "a-5",
+    courseId: "c-10",
+    title: "Code of Conduct Final Quiz",
+    category: "Foundation",
+    durationMinutes: 15,
+    passingScore: 80,
+    status: "not_started",
+    bestScore: null,
+    questions: [
+      {
+        id: "q1",
+        question: "An interpreter who is offered a personal gift by a client should:",
+        options: [
+          "Accept it to maintain rapport",
+          "Politely decline in line with the code of conduct",
+          "Accept only if it is small",
+          "Ask a supervisor to accept it for them",
+        ],
+        answer: 1,
+      },
+      {
+        id: "q2",
+        question: "Professional conduct requires interpreters to arrive:",
+        options: ["Whenever convenient", "Prepared and on time for every assignment", "Only for paid work", "After the provider"],
+        answer: 1,
+      },
+      {
+        id: "q3",
+        question: "A conflict of interest should be:",
+        options: ["Hidden", "Disclosed immediately", "Ignored if minor", "Resolved privately with the client"],
+        answer: 1,
+      },
+    ],
+  },
+  {
+    id: "a-6",
+    courseId: "c-11",
+    title: "Compliance Training Final Quiz",
+    category: "Compliance",
+    durationMinutes: 15,
+    passingScore: 80,
+    status: "not_started",
+    bestScore: null,
+    questions: [
+      {
+        id: "q1",
+        question: "Compliance policies exist primarily to:",
+        options: [
+          "Slow down the workflow",
+          "Ensure legal, ethical, and regulatory obligations are met",
+          "Increase paperwork",
+          "Limit interpreter assignments",
+        ],
+        answer: 1,
+      },
+      {
+        id: "q2",
+        question: "When unsure whether an action is compliant, an interpreter should:",
+        options: ["Proceed anyway", "Ask the compliance team before acting", "Guess", "Ask another interpreter"],
+        answer: 1,
+      },
+      {
+        id: "q3",
+        question: "Records containing sensitive information must be:",
+        options: [
+          "Stored on personal devices",
+          "Handled and stored according to policy",
+          "Shared freely within the team",
+          "Kept indefinitely",
+        ],
+        answer: 1,
+      },
+    ],
+  },
 ]
 
 export const certificates: Certificate[] = [
   {
     id: "cert-1",
     certId: "CVX-MED-2024-0192",
-    courseTitle: "Medical Interpretation Certification",
+    courseTitle: "40-Hour Medical Interpreter Training",
     recipient: "Daniel Okoro",
     issuedAt: "2024-08-14",
-    expiresAt: "2026-08-14",
+    expiresAt: "",
     score: 92,
     status: "valid",
   },
   {
     id: "cert-2",
     certId: "CVX-HIPAA-2024-0455",
-    courseTitle: "HIPAA Compliance for Interpreters",
+    courseTitle: "HIPAA & Fraud Awareness",
     recipient: "Daniel Okoro",
     issuedAt: "2024-09-02",
-    expiresAt: "2026-09-02",
+    expiresAt: "2025-09-02",
     score: 88,
-    status: "valid",
+    status: "expired",
   },
   {
     id: "cert-3",
@@ -645,9 +893,9 @@ export const certificates: Certificate[] = [
     courseTitle: "Customer Service Interpretation",
     recipient: "Daniel Okoro",
     issuedAt: "2023-12-19",
-    expiresAt: "2025-12-19",
+    expiresAt: "2024-12-19",
     score: 95,
-    status: "valid",
+    status: "expired",
   },
   {
     id: "cert-4",
@@ -655,29 +903,33 @@ export const certificates: Certificate[] = [
     courseTitle: "OPI Training",
     recipient: "Daniel Okoro",
     issuedAt: "2022-05-10",
-    expiresAt: "2024-05-10",
+    expiresAt: "2023-05-10",
     score: 84,
     status: "expired",
   },
 ]
 
 export const recentActivity = [
-  { id: "act-1", text: "Completed lesson 'Core terminology & glossary'", course: "Medical Interpretation", time: "2 hours ago" },
-  { id: "act-2", text: "Passed HIPAA Compliance Quiz with 88%", course: "HIPAA Compliance", time: "1 day ago" },
-  { id: "act-3", text: "Enrolled in Legal Interpretation Fundamentals", course: "Legal Interpretation", time: "2 days ago" },
-  { id: "act-4", text: "Downloaded 'Terminology Glossary.pdf'", course: "OPI Training", time: "4 days ago" },
+  { id: "act-1", text: "Completed lesson 'Core concepts (lecture)'", course: "HIPAA & Fraud Awareness", time: "2 hours ago" },
+  { id: "act-2", text: "Passed HIPAA & Fraud Awareness Quiz with 88%", course: "HIPAA & Fraud Awareness", time: "1 day ago" },
+  { id: "act-3", text: "Enrolled in Code of Conduct", course: "Code of Conduct", time: "2 days ago" },
+  { id: "act-4", text: "Viewed 'Terminology Glossary.pdf'", course: "OPI Training", time: "4 days ago" },
   { id: "act-5", text: "Earned certificate CVX-CS-2023-1120", course: "Customer Service", time: "1 week ago" },
 ]
 
 export const notifications = [
-  { id: "n-1", type: "enrollment", title: "New course assigned", body: "You have been enrolled in Legal Interpretation Fundamentals.", time: "2h ago", unread: true },
-  { id: "n-2", type: "certificate", title: "Certificate issued", body: "Your Medical Interpretation certificate is ready to download.", time: "1d ago", unread: true },
-  { id: "n-3", type: "exam", title: "Exam result available", body: "You scored 88% on the HIPAA Compliance Quiz.", time: "1d ago", unread: false },
-  { id: "n-4", type: "enrollment", title: "Reminder", body: "Ethics & Standards module is due in 3 days.", time: "3d ago", unread: false },
+  { id: "n-1", type: "enrollment", title: "New course assigned", body: "You have been enrolled in Code of Conduct.", time: "2h ago", unread: true },
+  { id: "n-2", type: "certificate", title: "Certificate awaiting release", body: "Your Medical Interpreter certificate requires admin approval.", time: "1d ago", unread: true },
+  { id: "n-3", type: "exam", title: "Exam result available", body: "You scored 88% on the HIPAA & Fraud Awareness Quiz.", time: "1d ago", unread: false },
+  { id: "n-4", type: "enrollment", title: "Reminder", body: "Complete Code of Conduct to unlock the next course.", time: "3d ago", unread: false },
 ]
 
 export function getCourse(slug: string) {
   return courses.find((c) => c.slug === slug)
+}
+
+export function getCourseById(id: string) {
+  return courses.find((c) => c.id === id)
 }
 
 export function getAssessment(id: string) {

@@ -55,7 +55,7 @@ export function CertificatePreview({ cert }: { cert: Certificate }) {
           </div>
           <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Valid until</p>
-            <p className="text-sm font-medium">{formatDate(cert.expiresAt)}</p>
+            <p className="text-sm font-medium">{cert.expiresAt ? formatDate(cert.expiresAt) : "No expiration"}</p>
           </div>
           <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Certificate No.</p>

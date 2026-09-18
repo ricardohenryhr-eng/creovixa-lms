@@ -5,25 +5,32 @@ import Link from "next/link"
 import { BookOpen } from "lucide-react"
 import { PageHeader, Button } from "@/components/ui"
 import { CourseCard } from "@/components/course-card"
-import { courses } from "@/lib/data"
+import { useProgress } from "@/lib/progress"
+import { orderedCourses, courseUnlocked, courseCompleted, lessonProgress } from "@/lib/curriculum"
 import { cn } from "@/lib/utils"
 
 type Tab = "all" | "in_progress" | "completed"
 
 const tabs: { id: Tab; label: string }[] = [
-  { id: "all", label: "All enrolled" },
+  { id: "all", label: "All courses" },
   { id: "in_progress", label: "In progress" },
   { id: "completed", label: "Completed" },
 ]
 
 export default function MyCoursesPage() {
   const [tab, setTab] = useState<Tab>("all")
+  const { state } = useProgress()
 
-  // Enrolled = any course with progress recorded (demo: progress >= 0 but treat >0 as enrolled)
-  const enrolled = courses.filter((c) => c.progress > 0)
-  const filtered = enrolled.filter((c) => {
-    if (tab === "in_progress") return c.progress > 0 && c.progress < 100
-    if (tab === "completed") return c.progress === 100
+  const rows = orderedCourses.map((c) => {
+    const pct = lessonProgress(c, state).pct
+    const completed = courseCompleted(c, state)
+    const locked = !courseUnlocked(c, state)
+    return { course: c, pct, completed, locked }
+  })
+
+  const filtered = rows.filter((r) => {
+    if (tab === "in_progress") return !r.completed && r.pct > 0
+    if (tab === "completed") return r.completed
     return true
   })
 
@@ -31,7 +38,7 @@ export default function MyCoursesPage() {
     <div>
       <PageHeader
         title="My courses"
-        subtitle="Track and continue the courses you're enrolled in."
+        subtitle="Your certification path, in the order you must complete it."
         action={
           <Link href="/courses">
             <Button variant="outline">Browse catalog</Button>
@@ -64,8 +71,8 @@ export default function MyCoursesPage() {
         </div>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((c) => (
-            <CourseCard key={c.id} course={c} />
+          {filtered.map((r) => (
+            <CourseCard key={r.course.id} course={r.course} locked={r.locked} completed={r.completed} progressPct={r.pct} />
           ))}
         </div>
       )}

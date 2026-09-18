@@ -12,10 +12,12 @@ import {
   Award,
   RotateCcw,
   Target,
+  Lock,
 } from "lucide-react"
 import { Card, Badge, Button, Progress } from "@/components/ui"
 import { getAssessment, getCourse } from "@/lib/data"
 import { useProgress } from "@/lib/progress"
+import { assessmentUnlocked } from "@/lib/curriculum"
 import { cn } from "@/lib/utils"
 
 export default function QuizPage() {
@@ -25,8 +27,9 @@ export default function QuizPage() {
 
   const course = getCourse(assessment.courseId) ?? undefined
   const total = assessment.questions.length
-  const { markAssessmentPassed } = useProgress()
+  const { state, markAssessmentPassed } = useProgress()
   const recordedRef = useRef(false)
+  const locked = course ? !assessmentUnlocked(course, state) : false
 
   const [started, setStarted] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -74,6 +77,32 @@ export default function QuizPage() {
     setAnswers({})
     setCurrent(0)
     setSecondsLeft(assessment.durationMinutes * 60)
+  }
+
+  // ---- Locked: lessons not yet complete ----
+  if (locked) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <Link href="/assessments" className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Back to assessments
+        </Link>
+        <Card className="p-8 text-center">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+            <Lock className="h-6 w-6 text-muted-foreground" />
+          </span>
+          <h1 className="mt-4 font-display text-xl font-bold">Final quiz locked</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            You must complete all lessons in{" "}
+            <span className="font-medium text-foreground">{course?.title}</span> before taking the final quiz.
+          </p>
+          {course && (
+            <Link href={`/courses/${course.slug}`} className="mt-5 inline-block">
+              <Button>Go to course</Button>
+            </Link>
+          )}
+        </Card>
+      </div>
+    )
   }
 
   // ---- Intro screen ----

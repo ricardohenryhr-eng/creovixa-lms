@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Users, BookOpen, Award, BarChart3, Settings, ArrowRight, UserPlus, FileCheck2 } from "lucide-react"
 import { PageHeader, Card, StatCard, Badge, Avatar } from "@/components/ui"
+import { AdminCertApprovals } from "@/components/admin-cert-approvals"
 import { teamUsers, courses, certificates, roleLabels } from "@/lib/data"
 import { formatDate } from "@/lib/utils"
 
@@ -76,6 +77,10 @@ export default function AdminPage() {
             </Link>
           ))}
         </div>
+      </div>
+
+      <div className="mt-6">
+        <AdminCertApprovals />
       </div>
     </div>
   )

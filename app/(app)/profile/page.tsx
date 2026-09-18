@@ -5,7 +5,9 @@ import Image from "next/image"
 import { Camera, Check, GraduationCap, Award, BookOpen } from "lucide-react"
 import { PageHeader, Card, Button, Input, Badge, Avatar, Progress } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
-import { roleLabels, courses, certificates } from "@/lib/data"
+import { useProgress } from "@/lib/progress"
+import { orderedCourses, lessonProgress, courseCompleted } from "@/lib/curriculum"
+import { roleLabels, certificates } from "@/lib/data"
 import { cn, formatDate } from "@/lib/utils"
 
 type Tab = "profile" | "security" | "history"
@@ -18,6 +20,7 @@ const tabs: { id: Tab; label: string }[] = [
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth()
+  const { state } = useProgress()
   const [tab, setTab] = useState<Tab>("profile")
   const [photo, setPhoto] = useState<string | null>(null)
   const [name, setName] = useState(user?.name ?? "")
@@ -50,7 +53,10 @@ export default function ProfilePage() {
     ;(e.target as HTMLFormElement).reset()
   }
 
-  const completed = courses.filter((c) => c.progress === 100)
+  const historyRows = orderedCourses
+    .map((c) => ({ course: c, pct: lessonProgress(c, state).pct, done: courseCompleted(c, state) }))
+    .filter((r) => r.pct > 0 || r.done)
+  const completedCount = historyRows.filter((r) => r.done).length
 
   return (
     <div>
@@ -140,20 +146,26 @@ export default function ProfilePage() {
         <Card className="p-6">
           <h3 className="font-display text-lg font-semibold">Training history</h3>
           <div className="mt-4 flex flex-col gap-3">
-            {courses.filter((c) => c.progress > 0).map((c) => (
-              <div key={c.id} className="flex items-center gap-4 rounded-lg border border-border p-3">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{c.title}</p>
-                  <div className="mt-2 flex items-center gap-3">
-                    <Progress value={c.progress} className="max-w-[200px]" tone={c.progress === 100 ? "success" : "primary"} />
-                    <span className="text-xs text-muted-foreground">{c.progress}%</span>
+            {historyRows.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+                No training activity yet. Start a course to build your history.
+              </p>
+            ) : (
+              historyRows.map(({ course: c, pct, done }) => (
+                <div key={c.id} className="flex items-center gap-4 rounded-lg border border-border p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{c.title}</p>
+                    <div className="mt-2 flex items-center gap-3">
+                      <Progress value={pct} className="max-w-[200px]" tone={done ? "success" : "primary"} />
+                      <span className="text-xs text-muted-foreground">{pct}%</span>
+                    </div>
                   </div>
+                  {done ? <Badge tone="green">Completed</Badge> : <Badge tone="amber">In progress</Badge>}
                 </div>
-                {c.progress === 100 ? <Badge tone="green">Completed</Badge> : <Badge tone="amber">In progress</Badge>}
-              </div>
-            ))}
+              ))
+            )}
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">{completed.length} courses completed · {certificates.length} certificates earned</p>
+          <p className="mt-4 text-sm text-muted-foreground">{completedCount} courses completed · {certificates.length} certificates earned</p>
         </Card>
       )}
     </div>
