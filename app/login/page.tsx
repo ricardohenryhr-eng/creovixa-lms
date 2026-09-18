@@ -12,6 +12,7 @@ import { roleLabels, type Role } from "@/lib/data"
 const demoAccounts: { role: Role; email: string; password: string; label?: string }[] = [
   { role: "super_admin", email: "superadmin@creovixa.com", password: "Admin123!" },
   { role: "admin", email: "admin@creovixa.com", password: "Admin123!" },
+  { role: "trainer", email: "trainer@creovixa.com", password: "demo" },
   { role: "interpreter", email: "interpreter@creovixa.com", password: "demo" },
   { role: "student", email: "student@creovixa.com", password: "demo" },
   { role: "interpreter", email: "expired@creovixa.com", password: "demo", label: "Interpreter (expired access)" },

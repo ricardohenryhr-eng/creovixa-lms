@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { Card, Badge, Progress, Button, StatCard } from "@/components/ui"
 import { CourseVisual } from "@/components/course-visual"
+import { TrainerDashboard } from "@/components/trainer-dashboard"
 import { useAuth } from "@/lib/auth"
 import { useProgress } from "@/lib/progress"
 import { orderedCourses, lessonProgress, courseCompleted, courseUnlocked } from "@/lib/curriculum"
@@ -23,6 +24,9 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const { state } = useProgress()
   if (!user) return null
+
+  // Trainers get a teaching-focused dashboard instead of the learner view.
+  if (user.role === "trainer") return <TrainerDashboard />
 
   const isAdmin = user.role === "admin" || user.role === "super_admin"
   const rows = orderedCourses.map((c) => ({
