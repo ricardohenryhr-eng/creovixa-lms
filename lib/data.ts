@@ -135,7 +135,7 @@ export interface Course {
   category: string
   /** Learning track this course belongs to; defaults to "core" when omitted. */
   track?: CourseTrack
-  level: "Beginner" | "Intermediate" | "Advanced" | "Required" | "Core Interpreter Training"
+  level: "Beginner" | "Intermediate" | "Advanced" | "Required" | "Core Interpreter Training" | "Certification Preparation"
   description: string
   instructor: string
   lessonsCount: number
@@ -959,6 +959,29 @@ export const courses: Course[] = [
     certPrefix: "CONI",
     cert: oneYear,
     modules: buildModules("Oncology Interpreting"),
+    resources,
+  },
+  {
+    id: "cchi-17",
+    slug: "cchi-exam-preparation-master-course",
+    title: "CCHI Exam Preparation Master Course",
+    category: "Medical",
+    track: "cchi",
+    level: "Certification Preparation",
+    description:
+      "The capstone course that pulls everything together to prepare you for the CCHI certification exams. It covers the exam structure (both the written CoreCHI and the oral CHI performance exams), a full review of the Code of Ethics, Standards of Practice, and professional conduct, and comprehensive refreshers on medical terminology, anatomy, and HIPAA. It then builds exam readiness through a 500-item practice question bank with explanations and performance analytics, and full written and oral mock exams, culminating in a 100-question readiness assessment. Earn your Creovixa completion certificate when you pass.",
+    instructor: "Sofia Marin",
+    lessonsCount: 12,
+    hours: 20,
+    enrolled: 624,
+    rating: 5.0,
+    progress: 0,
+    accentImage: "medical",
+    order: 17,
+    foundation: false,
+    certPrefix: "CEPM",
+    cert: oneYear,
+    modules: buildModules("CCHI Exam Preparation Master Course"),
     resources,
   },
 ]
