@@ -190,6 +190,14 @@ export interface Certificate {
   expiresAt: string
   score: number
   status: "valid" | "expired"
+  /**
+   * "medical" renders the flagship 40-Hour Medical Interpreter Training
+   * certificate (special title, training-hours line, and program description).
+   * Defaults to the standard course certificate.
+   */
+  variant?: "standard" | "medical"
+  /** Training hours completed, shown on the flagship medical certificate. */
+  hours?: number
 }
 
 export const roleLabels: Record<Role, string> = {
@@ -1325,6 +1333,8 @@ export const certificates: Certificate[] = [
     expiresAt: "",
     score: 92,
     status: "valid",
+    variant: "medical",
+    hours: 40,
   },
   {
     id: "cert-2",

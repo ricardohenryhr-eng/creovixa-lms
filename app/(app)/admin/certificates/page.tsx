@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { Award, CheckCircle2, XCircle, Lock, Search, ArrowRight } from "lucide-react"
+import { Award, CheckCircle2, XCircle, Lock, Search, ArrowRight, Eye, Download, X, ExternalLink } from "lucide-react"
 import { PageHeader, Card, StatCard, Badge, Button, Input, Avatar } from "@/components/ui"
-import { certificates, courses } from "@/lib/data"
+import { certificates, courses, type Certificate } from "@/lib/data"
+import { CertificatePreview } from "@/components/certificate-preview"
 import { cn, formatDate } from "@/lib/utils"
 
 type StatusFilter = "all" | "valid" | "expired"
@@ -13,6 +14,7 @@ const filters: StatusFilter[] = ["all", "valid", "expired"]
 export default function CertificateManagementPage() {
   const [query, setQuery] = useState("")
   const [status, setStatus] = useState<StatusFilter>("all")
+  const [active, setActive] = useState<Certificate | null>(null)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -89,7 +91,8 @@ export default function CertificateManagementPage() {
                 <th className="px-4 py-3 font-semibold">Issued</th>
                 <th className="px-4 py-3 font-semibold">Expires</th>
                 <th className="px-4 py-3 font-semibold">Score</th>
-                <th className="px-4 py-3 font-semibold text-right">Status</th>
+                <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold text-right">View</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -106,8 +109,13 @@ export default function CertificateManagementPage() {
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(c.issuedAt)}</td>
                   <td className="px-4 py-3 text-muted-foreground">{c.expiresAt ? formatDate(c.expiresAt) : "Never"}</td>
                   <td className="px-4 py-3 font-medium">{c.score}%</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3">
                     <Badge tone={c.status === "valid" ? "green" : "red"}>{c.status === "valid" ? "Valid" : "Expired"}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button size="sm" variant="outline" onClick={() => setActive(c)}>
+                      <Eye className="h-4 w-4" /> View
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -116,6 +124,33 @@ export default function CertificateManagementPage() {
         </div>
         {filtered.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">No certificates match your filters.</p>}
       </Card>
+
+      {active && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setActive(null)}>
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between no-print">
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => window.print()}>
+                  <Download className="h-4 w-4" /> Download PDF
+                </Button>
+                <Link href={`/verify/${active.certId}`}>
+                  <Button size="sm" variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10">
+                    <ExternalLink className="h-4 w-4" /> Verify
+                  </Button>
+                </Link>
+              </div>
+              <button
+                onClick={() => setActive(null)}
+                aria-label="Close"
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <CertificatePreview cert={active} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

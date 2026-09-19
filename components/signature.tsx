@@ -9,12 +9,21 @@ const SIGNATURE_PATHS: Record<string, string> = {
     "M4 22 C 12 6, 18 34, 26 20 C 32 10, 36 30, 44 20 C 50 12, 58 30, 68 18 C 76 8, 82 32, 94 20 C 102 12, 110 28, 122 16 C 125 13, 127 15, 128 18",
 }
 
-export function Signature({ nameKey, className }: { nameKey: string; className?: string }) {
+export function Signature({
+  nameKey,
+  className,
+  style,
+}: {
+  nameKey: string
+  className?: string
+  style?: React.CSSProperties
+}) {
   const d = SIGNATURE_PATHS[nameKey] ?? SIGNATURE_PATHS.ricardo
   return (
     <svg
       viewBox="0 0 132 40"
       className={className}
+      style={style}
       fill="none"
       role="img"
       aria-label="Digital signature"

@@ -58,6 +58,8 @@ export default function CertificatesPage() {
         expiresAt,
         score,
         status: expired ? "expired" : "valid",
+        variant: course.certPrefix === "MED" ? "medical" : "standard",
+        hours: course.hours,
       }
       return { course, access: finalAccess, cert, expired }
     })
@@ -106,12 +108,12 @@ export default function CertificatesPage() {
       {active && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setActive(null)}>
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3 flex items-center justify-between no-print">
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => window.print()}>
                   <Download className="h-4 w-4" /> Download PDF
                 </Button>
-                <Link href={`/verify?id=${active.certId}`}>
+                <Link href={`/verify/${active.certId}`}>
                   <Button size="sm" variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10">
                     <ExternalLink className="h-4 w-4" /> Verify
                   </Button>
