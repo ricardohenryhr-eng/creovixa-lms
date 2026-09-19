@@ -70,9 +70,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const hydrate = useCallback(async () => {
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser()
+    // getUser() hits the network. In the preview iframe (or on any transient
+    // connectivity blip) that request can fail, rejecting with a DOM Event that
+    // otherwise surfaces as an unhandled rejection ({"isTrusted":true}). Treat
+    // any failure as "not signed in" instead of letting it escape.
+    let authUser: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null
+    try {
+      const { data, error } = await supabase.auth.getUser()
+      if (error) {
+        setUser(null)
+        return
+      }
+      authUser = data.user
+    } catch {
+      setUser(null)
+      return
+    }
 
     if (!authUser) {
       setUser(null)
@@ -124,8 +137,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true
     ;(async () => {
-      await hydrate()
-      if (active) setLoading(false)
+      try {
+        await hydrate()
+      } catch {
+        if (active) setUser(null)
+      } finally {
+        if (active) setLoading(false)
+      }
     })()
 
     const {
@@ -136,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-        void hydrate()
+        hydrate().catch(() => setUser(null))
       }
     })
 

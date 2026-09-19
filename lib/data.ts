@@ -73,6 +73,10 @@ export interface Lesson {
   completed: boolean
   /** Optional streaming video URL rendered in the lesson's video player. */
   videoUrl?: string
+  /** Full lesson transcript shown beneath the video player. */
+  transcript?: string
+  /** Optional audio practice/interpreting-drill track for this lesson. */
+  audioUrl?: string
   /** What the learner should be able to do after this lesson. */
   objectives?: string[]
   /** The written training material, as an ordered list of prose paragraphs. */
