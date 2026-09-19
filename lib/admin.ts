@@ -11,6 +11,7 @@ import {
   Settings,
   KeyRound,
   Mail,
+  Video,
   type LucideIcon,
 } from "lucide-react"
 import type { Role } from "./data"
@@ -24,6 +25,7 @@ export type AdminSection =
   | "dashboard"
   | "users"
   | "courses"
+  | "videos"
   | "certificates"
   | "interpreters"
   | "access"
@@ -45,6 +47,7 @@ export const adminNav: AdminNavItem[] = [
   { href: "/admin", label: "Overview", section: "dashboard", icon: ShieldCheck },
   { href: "/admin/users", label: "User Management", section: "users", icon: Users },
   { href: "/admin/courses", label: "Course Management", section: "courses", icon: BookOpen },
+  { href: "/admin/videos", label: "Video Content", section: "videos", icon: Video },
   { href: "/admin/certificates", label: "Certificate Management", section: "certificates", icon: Award },
   { href: "/admin/interpreters", label: "Interpreter Management", section: "interpreters", icon: UserCheck },
   { href: "/admin/access", label: "Access Management", section: "access", icon: KeyRound },

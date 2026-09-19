@@ -12,14 +12,18 @@ import type { CourseContent } from "@/lib/course-content"
  * pulls its modules, resources, and final assessment from here by slug.
  */
 
-/** Openly-hosted sample streams used to demonstrate the in-lesson player. */
+/**
+ * Placeholder demo streams removed. Real videos are managed per lesson in the
+ * database (lesson_videos) via Admin → Video Content and overlaid at runtime;
+ * lessons without a real video show "Training video coming soon".
+ */
 const V = {
-  a: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-  b: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-  c: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-  d: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-  e: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-  f: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
+  a: "",
+  b: "",
+  c: "",
+  d: "",
+  e: "",
+  f: "",
 }
 
 function res(prefix: string): Resource[] {

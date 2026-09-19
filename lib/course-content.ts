@@ -24,20 +24,23 @@ export interface CourseContent {
 }
 
 /**
- * Reliable, openly-hosted sample streams used to demonstrate the in-lesson
- * video player. Admins can replace any lesson's videoUrl with their own hosted
- * training video; the player and completion tracking work with any MP4 URL.
+ * Placeholder demo streams have been removed. Real training videos are managed
+ * per lesson in the database (the lesson_videos table) via Admin → Video
+ * Content and overlaid onto these lessons at runtime. Until an admin uploads a
+ * real video for a lesson, the player shows "Training video coming soon"
+ * instead of a placeholder clip. These empty strings keep each authored lesson
+ * marked as a video lesson without shipping a fake video.
  */
 const V = {
-  a: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-  b: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-  c: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-  d: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-  e: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-  f: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-  g: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-  h: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-  i: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+  a: "",
+  b: "",
+  c: "",
+  d: "",
+  e: "",
+  f: "",
+  g: "",
+  h: "",
+  i: "",
 }
 
 /** Every course ships the same three generated, downloadable study documents. */

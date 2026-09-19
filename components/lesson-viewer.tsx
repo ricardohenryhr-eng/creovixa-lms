@@ -12,17 +12,22 @@ import {
   ShieldCheck,
   Lock,
   Video,
+  Clock,
+  FileText,
+  Headphones,
 } from "lucide-react"
 import { Card, Badge, Button } from "@/components/ui"
 import { Watermark } from "@/components/content-protection"
 import type { Lesson } from "@/lib/data"
+import { parseVideoSource } from "@/lib/video"
 import { cn } from "@/lib/utils"
 
 /**
- * Renders a single lesson in full inside the course page: a streaming video
- * player (when the lesson has a video URL), learning objectives, the written
- * training material, key terminology, and an inline knowledge check that must
- * be passed before the lesson can be marked complete.
+ * Renders a single lesson in full inside the course page: a video player that
+ * supports MP4, Supabase Storage, YouTube, and Vimeo (or a "coming soon"
+ * notice when no real video is set yet), the lesson transcript, an audio
+ * practice drill, learning objectives, the written material, key terminology,
+ * and an inline knowledge check that must be passed before completion.
  */
 export function LessonViewer({
   lesson,
@@ -39,7 +44,8 @@ export function LessonViewer({
   index: number
   total: number
 }) {
-  const hasVideo = !!lesson.videoUrl
+  const source = useMemo(() => parseVideoSource(lesson.videoUrl), [lesson.videoUrl])
+  const hasVideo = source.kind !== "none"
   const kc = lesson.knowledgeCheck ?? []
   const hasKc = kc.length > 0
 
@@ -65,21 +71,39 @@ export function LessonViewer({
     <div className="flex flex-col gap-5">
       {/* Video / media */}
       {hasVideo ? (
-        <VideoPlayer key={lesson.id} url={lesson.videoUrl!} viewer={viewer} onWatched={() => setWatched(true)} watched={watched} />
+        <VideoPlayer
+          key={lesson.id}
+          source={source}
+          viewer={viewer}
+          onWatched={() => setWatched(true)}
+          watched={watched}
+        />
       ) : lesson.type === "video" ? (
         <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-dashed border-border bg-muted text-muted-foreground">
           <div className="flex flex-col items-center gap-2 text-center">
             <Video className="h-7 w-7" />
-            <span className="text-xs font-medium">Video for this lesson is being finalized</span>
+            <span className="text-sm font-semibold text-foreground">Training video coming soon</span>
+            <span className="text-xs">This lesson&apos;s video is being produced. The rest of the lesson is available below.</span>
           </div>
         </div>
       ) : null}
 
+      {/* Transcript */}
+      {lesson.transcript?.trim() ? <Transcript text={lesson.transcript} /> : null}
+
+      {/* Audio practice drill */}
+      {lesson.audioUrl?.trim() ? <AudioPractice url={lesson.audioUrl} /> : null}
+
       <Card className="p-5 sm:p-6">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge tone="muted">
             Lesson {index + 1} of {total}
           </Badge>
+          {lesson.duration && (
+            <Badge tone="muted">
+              <Clock className="h-3.5 w-3.5" /> {lesson.duration}
+            </Badge>
+          )}
           {completed && (
             <Badge tone="green">
               <CheckCircle2 className="h-3.5 w-3.5" /> Completed
@@ -255,18 +279,56 @@ function SectionTitle({ icon: Icon, children }: { icon: typeof Target; children:
   )
 }
 
+/** Collapsible lesson transcript shown beneath the video. */
+function Transcript({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Card className="p-5 sm:p-6">
+      <div className="flex items-center justify-between gap-3">
+        <SectionTitle icon={FileText}>Transcript</SectionTitle>
+        <Button variant="outline" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+          {open ? "Hide transcript" : "Show transcript"}
+        </Button>
+      </div>
+      {open && (
+        <div className="mt-4 max-h-96 overflow-y-auto whitespace-pre-line text-pretty text-sm leading-relaxed text-foreground/90">
+          {text}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+/** Native audio player for interpreting practice drills. */
+function AudioPractice({ url }: { url: string }) {
+  return (
+    <Card className="p-5 sm:p-6">
+      <SectionTitle icon={Headphones}>Audio practice drill</SectionTitle>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Practice interpreting along with this audio exercise.
+      </p>
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption -- practice audio has an accompanying transcript */}
+      <audio src={url} controls preload="none" controlsList="nodownload" className="mt-3 w-full">
+        Your browser does not support the audio element.
+      </audio>
+    </Card>
+  )
+}
+
 /**
- * Streaming-only video player: downloads and picture-in-picture are disabled
- * and every frame carries a per-viewer watermark. Watching to the end (or
- * ~90% through) marks the lesson's video requirement as met.
+ * Video player supporting MP4/Supabase (native <video> with watch tracking)
+ * and YouTube/Vimeo (privacy-friendly iframe embeds). File playback disables
+ * download and picture-in-picture and carries a per-viewer watermark; embeds
+ * ask the learner to confirm they finished watching, since cross-origin
+ * players cannot report progress.
  */
 function VideoPlayer({
-  url,
+  source,
   viewer,
   watched,
   onWatched,
 }: {
-  url: string
+  source: ReturnType<typeof parseVideoSource>
   viewer: string
   watched: boolean
   onWatched: () => void
@@ -278,41 +340,75 @@ function VideoPlayer({
     firedRef.current = watched
   }, [watched])
 
+  if (source.isFile && source.fileUrl) {
+    return (
+      <div className="relative overflow-hidden rounded-xl bg-black" onContextMenu={(e) => e.preventDefault()}>
+        {/* eslint-disable-next-line jsx-a11y/media-has-caption -- lesson provides a full transcript section */}
+        <video
+          ref={ref}
+          src={source.fileUrl}
+          controls
+          preload="metadata"
+          playsInline
+          disablePictureInPicture
+          controlsList="nodownload noplaybackrate"
+          className="aspect-video w-full"
+          onTimeUpdate={(e) => {
+            const v = e.currentTarget
+            if (!firedRef.current && v.duration && v.currentTime / v.duration >= 0.9) {
+              firedRef.current = true
+              onWatched()
+            }
+          }}
+          onEnded={() => {
+            if (!firedRef.current) {
+              firedRef.current = true
+              onWatched()
+            }
+          }}
+        />
+        <div className="pointer-events-none absolute inset-0">
+          <Watermark label={viewer} />
+        </div>
+        <StatusBadge watched={watched} />
+        <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
+          <PlayCircle className="h-3.5 w-3.5" /> Lesson video
+        </div>
+      </div>
+    )
+  }
+
+  // Embedded player (YouTube / Vimeo).
   return (
-    <div className="relative overflow-hidden rounded-xl bg-black" onContextMenu={(e) => e.preventDefault()}>
-      <video
-        ref={ref}
-        src={url}
-        controls
-        preload="metadata"
-        playsInline
-        disablePictureInPicture
-        controlsList="nodownload noplaybackrate"
-        className="aspect-video w-full"
-        onTimeUpdate={(e) => {
-          const v = e.currentTarget
-          if (!firedRef.current && v.duration && v.currentTime / v.duration >= 0.9) {
-            firedRef.current = true
-            onWatched()
-          }
-        }}
-        onEnded={() => {
-          if (!firedRef.current) {
-            firedRef.current = true
-            onWatched()
-          }
-        }}
-      />
-      <div className="pointer-events-none absolute inset-0">
-        <Watermark label={viewer} />
+    <div className="flex flex-col gap-3">
+      <div className="relative overflow-hidden rounded-xl bg-black">
+        <iframe
+          src={source.embedUrl}
+          title="Lesson video"
+          className="aspect-video w-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+        <div className="pointer-events-none absolute inset-0">
+          <Watermark label={viewer} />
+        </div>
+        <StatusBadge watched={watched} />
       </div>
-      <div className="pointer-events-none absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
-        <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-        {watched ? "Watched" : "Protected stream"}
-      </div>
-      <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
-        <PlayCircle className="h-3.5 w-3.5" /> Lesson video
-      </div>
+      {!watched && (
+        <Button variant="outline" onClick={onWatched} className="self-start">
+          <CheckCircle2 className="h-4 w-4" /> I&apos;ve finished watching this video
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function StatusBadge({ watched }: { watched: boolean }) {
+  return (
+    <div className="pointer-events-none absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
+      <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+      {watched ? "Watched" : "Protected stream"}
     </div>
   )
 }

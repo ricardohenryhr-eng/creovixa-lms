@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import useSWR from "swr"
 import Link from "next/link"
 import { useParams, notFound } from "next/navigation"
 import {
@@ -28,7 +29,8 @@ import { LessonViewer } from "@/components/lesson-viewer"
 import { useAuth } from "@/lib/auth"
 import { useProgress } from "@/lib/progress"
 import { getCourse } from "@/lib/data"
-import type { LessonType } from "@/lib/data"
+import type { Course, LessonType } from "@/lib/data"
+import { formatDuration } from "@/lib/video"
 import {
   previousCourse,
   courseAssessment,
@@ -60,6 +62,16 @@ const typeLabel: Record<LessonType, string> = {
   pdf: "Document",
 }
 
+interface LessonMedia {
+  videoUrl: string | null
+  transcript: string | null
+  audioUrl: string | null
+  durationSeconds: number | null
+}
+
+const videosFetcher = (url: string): Promise<{ videos: Record<string, LessonMedia> }> =>
+  fetch(url).then((r) => (r.ok ? r.json() : { videos: {} }))
+
 export default function CourseDetailPage() {
   const params = useParams<{ slug: string }>()
   const course = getCourse(params.slug)
@@ -70,7 +82,33 @@ export default function CourseDetailPage() {
   const recipient = user?.name ?? "Creovixa Learner"
   const { state, setCourseLessons, markCourseCompleted } = useProgress()
 
-  const lessons = useMemo(() => lessonList(course), [course])
+  // Overlay the database-backed training media (real video URL, transcript,
+  // audio drill, duration) onto the static lesson data. Until an admin adds a
+  // video for a lesson, no URL exists and the player shows "coming soon".
+  const { data: videoData } = useSWR(`/api/lesson-videos/${course.slug}`, videosFetcher)
+  const vcourse = useMemo<Course>(() => {
+    const videos = videoData?.videos
+    if (!videos) return course
+    return {
+      ...course,
+      modules: course.modules.map((m) => ({
+        ...m,
+        lessons: m.lessons.map((l) => {
+          const v = videos[l.id]
+          if (!v) return l
+          return {
+            ...l,
+            videoUrl: v.videoUrl ?? l.videoUrl,
+            transcript: v.transcript ?? l.transcript,
+            audioUrl: v.audioUrl ?? l.audioUrl,
+            duration: formatDuration(v.durationSeconds) ?? l.duration,
+          }
+        }),
+      })),
+    }
+  }, [course, videoData])
+
+  const lessons = useMemo(() => lessonList(vcourse), [vcourse])
   const completedSet = completedLessonSet(course, state)
 
   const [currentLessonId, setCurrentLessonId] = useState(lessons[0]?.id)
@@ -185,7 +223,7 @@ export default function CourseDetailPage() {
               <span className="text-xs text-muted-foreground">Complete lessons in order</span>
             </div>
             <div className="flex flex-col gap-4">
-              {course.modules.map((m, i) => (
+              {vcourse.modules.map((m, i) => (
                 <div key={m.id} className="overflow-hidden rounded-lg border border-border">
                   <div className="flex items-center justify-between bg-muted/50 px-4 py-3">
                     <p className="text-sm font-semibold">Module {i + 1}: {m.title}</p>
