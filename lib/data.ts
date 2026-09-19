@@ -892,6 +892,29 @@ export const courses: Course[] = [
     modules: buildModules("Emergency Department Interpreting"),
     resources,
   },
+  {
+    id: "cchi-14",
+    slug: "pediatrics-interpreting",
+    title: "Pediatrics Interpreting",
+    category: "Medical",
+    track: "cchi",
+    level: "Advanced",
+    description:
+      "A complete advanced course preparing healthcare interpreters to work effectively in pediatric settings, where the patient is a child and the family is central: an overview of pediatric healthcare and child development, pediatric terminology (childhood illnesses, vaccinations, growth and development), and the communication skills needed to work with parents around consent and family dynamics. Includes quizzes and a 40-question final exam.",
+    instructor: "Sofia Marin",
+    lessonsCount: 9,
+    hours: 6,
+    enrolled: 452,
+    rating: 4.9,
+    progress: 0,
+    accentImage: "medical",
+    order: 14,
+    foundation: false,
+    certPrefix: "CPDI",
+    cert: oneYear,
+    modules: buildModules("Pediatrics Interpreting"),
+    resources,
+  },
 ]
 
 /**
