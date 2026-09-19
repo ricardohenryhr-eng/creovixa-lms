@@ -1,18 +1,17 @@
-"use client"
-
-import { use } from "react"
 import Link from "next/link"
 import { ShieldCheck, ShieldX, CheckCircle2, Search } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { Button, Card, Badge } from "@/components/ui"
 import { CertificatePreview } from "@/components/certificate-preview"
-import { findCertificate } from "@/lib/data"
+import { verifyCertificate } from "@/app/actions/certificates"
 import { formatDate } from "@/lib/utils"
 
-export default function VerifyByIdPage({ params }: { params: Promise<{ certificateId: string }> }) {
-  const { certificateId } = use(params)
+export const dynamic = "force-dynamic"
+
+export default async function VerifyByIdPage({ params }: { params: Promise<{ certificateId: string }> }) {
+  const { certificateId } = await params
   const id = decodeURIComponent(certificateId)
-  const result = findCertificate(id)
+  const result = await verifyCertificate(id)
 
   return (
     <div className="flex min-h-screen flex-col bg-muted/30">

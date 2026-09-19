@@ -94,11 +94,21 @@ export function CertificatePreview({ cert }: { cert: Certificate }) {
         >
           <div className="p-[2px]" style={{ backgroundColor: NAVY }}>
             <div className="relative overflow-hidden bg-[#fdfbf4] px-5 py-6 text-center sm:px-10 sm:py-9">
+              {/* Laurel + globe watermark, matching the official master template */}
+              <img
+                src="/certificate-watermark.png"
+                alt=""
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover opacity-50 mix-blend-multiply"
+              />
+
               {/* Gold corner accents */}
               {corners.map((c) => (
-                <span key={c} className={`pointer-events-none absolute h-7 w-7 ${c}`} style={{ borderColor: GOLD }} aria-hidden="true" />
+                <span key={c} className={`pointer-events-none absolute z-10 h-7 w-7 ${c}`} style={{ borderColor: GOLD }} aria-hidden="true" />
               ))}
 
+              {/* All content sits above the watermark */}
+              <div className="relative z-10">
               {/* Header: logo + service tagline */}
               <div className="flex items-start justify-between gap-3 text-left">
                 <img
@@ -134,6 +144,9 @@ export function CertificatePreview({ cert }: { cert: Certificate }) {
                 </p>
                 <span className="h-px w-10 sm:w-16" style={{ backgroundColor: GOLD }} />
               </div>
+              <div className="mt-2 flex justify-center">
+                <Diamond />
+              </div>
 
               {/* Recipient */}
               <p className="mt-5 text-[10px] font-medium tracking-[0.3em] sm:text-xs" style={{ color: `${NAVY}b3` }}>
@@ -142,13 +155,17 @@ export function CertificatePreview({ cert }: { cert: Certificate }) {
               <p className="mt-1 font-script text-4xl leading-tight sm:text-6xl" style={{ color: NAVY }}>
                 {cert.recipient}
               </p>
-              <span className="mx-auto mt-1 block h-px w-48 sm:w-72" style={{ backgroundColor: GOLD }} />
+              <div className="mt-2 flex items-center justify-center gap-2">
+                <span className="h-px w-24 sm:w-36" style={{ backgroundColor: GOLD }} />
+                <Diamond />
+                <span className="h-px w-24 sm:w-36" style={{ backgroundColor: GOLD }} />
+              </div>
 
               {/* Course / program */}
               <p className="mt-4 text-xs sm:text-sm" style={{ color: `${NAVY}cc` }}>
                 {completedLine}
               </p>
-              <p className="mt-1.5 font-display text-2xl font-bold sm:text-3xl" style={{ color: NAVY }}>
+              <p className="mt-1.5 font-display text-2xl font-bold sm:text-3xl" style={{ color: GOLD_DEEP }}>
                 {cert.courseTitle}
               </p>
 
@@ -225,6 +242,7 @@ export function CertificatePreview({ cert }: { cert: Certificate }) {
                 <p className="text-[9px] font-semibold tracking-[0.3em] sm:text-[11px]" style={{ color: GOLD_DEEP }}>
                   PEOPLE&nbsp; | &nbsp;COMMUNICATION&nbsp; | &nbsp;OPPORTUNITY
                 </p>
+              </div>
               </div>
             </div>
           </div>

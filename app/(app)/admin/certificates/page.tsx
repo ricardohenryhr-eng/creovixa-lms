@@ -1,11 +1,12 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Award, CheckCircle2, XCircle, Lock, Search, ArrowRight, Eye, Download, X, ExternalLink } from "lucide-react"
+import { Award, CheckCircle2, XCircle, Lock, Search, ArrowRight, Eye, Download, X, ExternalLink, Loader2 } from "lucide-react"
 import { PageHeader, Card, StatCard, Badge, Button, Input, Avatar } from "@/components/ui"
-import { certificates, courses, type Certificate } from "@/lib/data"
+import { courses, type Certificate } from "@/lib/data"
 import { CertificatePreview } from "@/components/certificate-preview"
+import { listAllCertificates } from "@/app/actions/certificates"
 import { cn, formatDate } from "@/lib/utils"
 
 type StatusFilter = "all" | "valid" | "expired"
@@ -15,19 +16,35 @@ export default function CertificateManagementPage() {
   const [query, setQuery] = useState("")
   const [status, setStatus] = useState<StatusFilter>("all")
   const [active, setActive] = useState<Certificate | null>(null)
+  const [certs, setCerts] = useState<Certificate[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let alive = true
+    listAllCertificates()
+      .then((rows) => {
+        if (alive) setCerts(rows)
+      })
+      .finally(() => {
+        if (alive) setLoading(false)
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return certificates.filter((c) => {
+    return certs.filter((c) => {
       const matchesStatus = status === "all" || c.status === status
       const matchesQuery =
         !q || c.recipient.toLowerCase().includes(q) || c.certId.toLowerCase().includes(q) || c.courseTitle.toLowerCase().includes(q)
       return matchesStatus && matchesQuery
     })
-  }, [query, status])
+  }, [query, status, certs])
 
-  const validCount = certificates.filter((c) => c.status === "valid").length
-  const expiredCount = certificates.filter((c) => c.status === "expired").length
+  const validCount = certs.filter((c) => c.status === "valid").length
+  const expiredCount = certs.filter((c) => c.status === "expired").length
   const restrictedCount = courses.filter((c) => c.cert.adminReleaseOnly).length
 
   return (
@@ -38,7 +55,7 @@ export default function CertificateManagementPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Issued" value={certificates.length + 38} icon={<Award className="h-5 w-5" />} tone="green" hint="This year" />
+        <StatCard label="Issued" value={certs.length} icon={<Award className="h-5 w-5" />} tone="green" hint="All time" />
         <StatCard label="Valid" value={validCount} icon={<CheckCircle2 className="h-5 w-5" />} tone="blue" hint="Currently active" />
         <StatCard label="Expired" value={expiredCount} icon={<XCircle className="h-5 w-5" />} tone="red" hint="Need renewal" />
         <StatCard label="Restricted" value={restrictedCount} icon={<Lock className="h-5 w-5" />} tone="amber" hint="Admin release only" />
@@ -122,7 +139,13 @@ export default function CertificateManagementPage() {
             </tbody>
           </table>
         </div>
-        {filtered.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">No certificates match your filters.</p>}
+        {loading ? (
+          <p className="flex items-center justify-center gap-2 py-10 text-center text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading certificates…
+          </p>
+        ) : (
+          filtered.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">No certificates match your filters.</p>
+        )}
       </Card>
 
       {active && (
