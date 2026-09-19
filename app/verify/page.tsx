@@ -1,26 +1,43 @@
 "use client"
 
-import { Suspense, useState, type FormEvent } from "react"
+import { Suspense, useEffect, useState, type FormEvent } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { Search, ShieldCheck, ShieldX, CheckCircle2 } from "lucide-react"
+import { Search, ShieldCheck, ShieldX, CheckCircle2, Loader2 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { Button, Input, Card, Badge } from "@/components/ui"
 import { CertificatePreview } from "@/components/certificate-preview"
-import { findCertificate } from "@/lib/data"
+import type { Certificate } from "@/lib/data"
+import { verifyCertificate } from "@/app/actions/certificates"
 import { formatDate } from "@/lib/utils"
 
 function VerifyInner() {
   const params = useSearchParams()
   const initial = params.get("id") ?? ""
   const [query, setQuery] = useState(initial)
-  const [searched, setSearched] = useState(Boolean(initial))
+  const [searched, setSearched] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<Certificate | null>(null)
 
-  const result = searched && query.trim() ? findCertificate(query.trim()) : undefined
+  async function runSearch(value: string) {
+    const trimmed = value.trim()
+    if (!trimmed) return
+    setLoading(true)
+    setSearched(true)
+    const found = await verifyCertificate(trimmed)
+    setResult(found)
+    setLoading(false)
+  }
+
+  // Auto-verify when arriving with ?id=... (e.g. from a saved link).
+  useEffect(() => {
+    if (initial.trim()) void runSearch(initial)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    setSearched(true)
+    void runSearch(query)
   }
 
   return (
@@ -44,23 +61,30 @@ function VerifyInner() {
             aria-label="Certificate ID"
           />
         </div>
-        <Button type="submit" size="md">Verify</Button>
+        <Button type="submit" size="md" disabled={loading}>
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
+        </Button>
       </form>
 
       <p className="mt-2 text-center text-xs text-muted-foreground">
-        Try a sample: <button type="button" onClick={() => { setQuery("CVX-MED-2024-0192"); setSearched(true) }} className="font-medium text-primary hover:underline">CVX-MED-2024-0192</button>
+        Try a sample: <button type="button" onClick={() => { setQuery("CVX-MED-2024-0192"); void runSearch("CVX-MED-2024-0192") }} className="font-medium text-primary hover:underline">CVX-MED-2024-0192</button>
       </p>
 
       {searched && (
         <div className="mt-8">
-          {result ? (
+          {loading ? (
+            <Card className="flex items-center gap-3 p-5 text-sm text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" /> Checking the certificate register…
+            </Card>
+          ) : result ? (
             <div>
               <Card className="mb-5 flex items-center gap-3 border-success/30 bg-green-50 p-4">
                 <CheckCircle2 className="h-5 w-5 text-success" />
                 <div>
                   <p className="text-sm font-semibold text-green-800">Valid certificate</p>
                   <p className="text-xs text-green-700">
-                    Issued to {result.recipient} · {result.status === "valid" ? "Active" : "Expired"} · Expires {formatDate(result.expiresAt)}
+                    Issued to {result.recipient} · {result.status === "valid" ? "Active" : "Expired"} ·{" "}
+                    {result.expiresAt ? `Expires ${formatDate(result.expiresAt)}` : "No expiration"}
                   </p>
                 </div>
                 <Badge tone={result.status === "valid" ? "green" : "red"} className="ml-auto">

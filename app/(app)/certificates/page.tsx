@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { Award, Download, X, ShieldCheck, ExternalLink, Lock, Clock } from "lucide-react"
 import { PageHeader, Card, Badge, Button } from "@/components/ui"
@@ -8,6 +8,7 @@ import { CertificatePreview } from "@/components/certificate-preview"
 import type { Certificate, Course } from "@/lib/data"
 import { useAuth } from "@/lib/auth"
 import { useProgress } from "@/lib/progress"
+import { issueCertificate } from "@/app/actions/certificates"
 import {
   orderedCourses,
   certificateAccess,
@@ -74,6 +75,28 @@ export default function CertificatesPage() {
       }
     })
   }, [rows, recipient, ensureCertCode])
+
+  // Persist every released certificate to the database so it is permanent,
+  // uniquely identified, and verifiable by ID. Idempotent per session via the
+  // ref and per record via the DB unique constraint.
+  const persistedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    rows.forEach(({ course, access, cert }) => {
+      if (!access.accessible || persistedRef.current.has(cert.certId)) return
+      persistedRef.current.add(cert.certId)
+      void issueCertificate({
+        certId: cert.certId,
+        recipient: cert.recipient,
+        courseSlug: course.slug,
+        courseTitle: cert.courseTitle,
+        score: cert.score,
+        hours: cert.hours ?? null,
+        variant: cert.variant ?? "standard",
+        issuedAt: cert.issuedAt,
+        expiresAt: cert.expiresAt || null,
+      })
+    })
+  }, [rows])
 
   const earnedCount = rows.filter((r) => r.access.earned).length
 
