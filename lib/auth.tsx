@@ -9,6 +9,7 @@ interface AuthResult {
   error?: string
   user?: User
   mustChangePassword?: boolean
+  role?: Role
 }
 
 interface AuthState {
@@ -165,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return {
         ok: true,
         mustChangePassword: profile ? !profile.password_changed : false,
+        role: profile?.role,
       }
     },
     [supabase, hydrate],

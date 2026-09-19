@@ -114,6 +114,8 @@ export interface AdminStats {
   pendingUsers: number
   courses: number
   certificates: number
+  pendingCertificates: number
+  coursesAssigned: number
   completionRate: number
   enrollments: number
   completedEnrollments: number
@@ -131,6 +133,9 @@ export async function getAdminStats(): Promise<AdminStats> {
   const p = (profiles as { status: AccountStatus }[]) ?? []
   const e = (enrollments as { completed: boolean; certificate_issued: boolean }[]) ?? []
   const completed = e.filter((x) => x.completed).length
+  const certificates = e.filter((x) => x.certificate_issued).length
+  // A pending certificate is a completed course whose certificate has not been issued yet.
+  const pendingCertificates = e.filter((x) => x.completed && !x.certificate_issued).length
 
   return {
     totalUsers: p.length,
@@ -138,11 +143,33 @@ export async function getAdminStats(): Promise<AdminStats> {
     suspendedUsers: p.filter((x) => x.status === "suspended").length,
     pendingUsers: p.filter((x) => x.status === "pending_first_login").length,
     courses: (courses as unknown[])?.length ?? 0,
-    certificates: e.filter((x) => x.certificate_issued).length,
+    certificates,
+    pendingCertificates,
+    coursesAssigned: e.length,
     completionRate: e.length ? Math.round((completed / e.length) * 100) : 0,
     enrollments: e.length,
     completedEnrollments: completed,
   }
+}
+
+export interface AuditLogRow {
+  id: string
+  actor_email: string | null
+  action: string
+  target_email: string | null
+  details: Record<string, unknown> | null
+  created_at: string
+}
+
+/** Recorded admin actions (admins only, enforced by RLS). Newest first. */
+export async function getAuditLog(limit = 50): Promise<AuditLogRow[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("audit_log")
+    .select("id, actor_email, action, target_email, details, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit)
+  return (data as AuditLogRow[]) ?? []
 }
 
 /** Map of userId -> { assigned, completed, certificates } for the admin roster. */

@@ -7,6 +7,7 @@ import { Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { Button, Input } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
+import { isAdminRole } from "@/lib/roles"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -33,7 +34,8 @@ export default function LoginPage() {
       router.push("/set-password")
       return
     }
-    router.push("/dashboard")
+    // Admins and the Super Admin land on the admin panel; everyone else on their dashboard.
+    router.push(isAdminRole(res.role) ? "/admin" : "/dashboard")
   }
 
   return (

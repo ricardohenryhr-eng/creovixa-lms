@@ -11,10 +11,12 @@ import {
   UserCheck,
   BadgeCheck,
   ClipboardList,
+  Hourglass,
+  History,
 } from "lucide-react"
 import { PageHeader, Card, StatCard, Badge, Avatar } from "@/components/ui"
 import { AdminCertApprovals } from "@/components/admin-cert-approvals"
-import { getAdminStats, getAllProfiles, getEnrollmentSummary } from "@/lib/queries"
+import { getAdminStats, getAllProfiles, getEnrollmentSummary, getAuditLog, type AuditLogRow } from "@/lib/queries"
 import { roleLabels, statusLabels, type AccountStatus } from "@/lib/roles"
 import { formatDate } from "@/lib/utils"
 
@@ -47,7 +49,12 @@ function colorFor(email: string): string {
 }
 
 export default async function AdminPage() {
-  const [stats, profiles, summary] = await Promise.all([getAdminStats(), getAllProfiles(), getEnrollmentSummary()])
+  const [stats, profiles, summary, auditLog] = await Promise.all([
+    getAdminStats(),
+    getAllProfiles(),
+    getEnrollmentSummary(),
+    getAuditLog(20),
+  ])
   const recent = profiles.slice(0, 5)
 
   return (
@@ -55,17 +62,17 @@ export default async function AdminPage() {
       <PageHeader title="Admin panel" subtitle="Manage users, monitor training, and configure the platform." />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total users" value={stats.totalUsers} icon={<Users className="h-5 w-5" />} tone="blue" hint={`${stats.activeUsers} active · ${stats.pendingUsers} pending`} />
-        <StatCard label="Suspended users" value={stats.suspendedUsers} icon={<UserCheck className="h-5 w-5" />} tone="red" hint="Access disabled" />
-        <StatCard label="Courses" value={stats.courses} icon={<BookOpen className="h-5 w-5" />} tone="orange" hint="Published catalog" />
-        <StatCard label="Certificates" value={stats.certificates} icon={<Award className="h-5 w-5" />} tone="green" hint="Issued" />
+        <StatCard label="Total users" value={stats.totalUsers} icon={<Users className="h-5 w-5" />} tone="blue" hint={`${stats.pendingUsers} pending first login`} />
+        <StatCard label="Active users" value={stats.activeUsers} icon={<UserCheck className="h-5 w-5" />} tone="green" hint="Able to sign in" />
+        <StatCard label="Suspended users" value={stats.suspendedUsers} icon={<Users className="h-5 w-5" />} tone="red" hint="Access disabled" />
+        <StatCard label="Courses assigned" value={stats.coursesAssigned} icon={<ClipboardList className="h-5 w-5" />} tone="orange" hint={`${stats.courses} in catalog`} />
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Enrollments" value={stats.enrollments} icon={<ClipboardList className="h-5 w-5" />} tone="muted" />
-        <StatCard label="Completed" value={stats.completedEnrollments} icon={<FileCheck2 className="h-5 w-5" />} tone="muted" />
-        <StatCard label="Completion rate" value={`${stats.completionRate}%`} icon={<BarChart3 className="h-5 w-5" />} tone="amber" />
-        <StatCard label="Active users" value={stats.activeUsers} icon={<Users className="h-5 w-5" />} tone="green" />
+        <StatCard label="Certificates issued" value={stats.certificates} icon={<Award className="h-5 w-5" />} tone="green" hint="Released to learners" />
+        <StatCard label="Pending certificates" value={stats.pendingCertificates} icon={<Hourglass className="h-5 w-5" />} tone="amber" hint="Completed, awaiting release" />
+        <StatCard label="Completed courses" value={stats.completedEnrollments} icon={<FileCheck2 className="h-5 w-5" />} tone="muted" />
+        <StatCard label="Completion rate" value={`${stats.completionRate}%`} icon={<BarChart3 className="h-5 w-5" />} tone="blue" />
       </div>
 
       <div className="mt-6">
@@ -137,6 +144,55 @@ export default async function AdminPage() {
           <AdminCertApprovals />
         </div>
       </div>
+
+      <div className="mt-6">
+        <Card className="p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <History className="h-4 w-4 text-primary" />
+            <h2 className="font-display text-lg font-semibold">Audit log</h2>
+            <Badge tone="muted">Recent activity</Badge>
+          </div>
+          {auditLog.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No admin activity recorded yet. Actions like creating users, assigning courses, and password resets appear here.
+            </p>
+          ) : (
+            <div className="flex flex-col divide-y divide-border">
+              {auditLog.map((entry) => (
+                <div key={entry.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 py-2.5 text-sm">
+                  <Badge tone="blue">{auditActionLabel(entry.action)}</Badge>
+                  <span className="text-foreground">{auditDescription(entry)}</span>
+                  <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">{formatDate(entry.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   )
+}
+
+const AUDIT_LABELS: Record<string, string> = {
+  user_created: "User created",
+  user_updated: "User updated",
+  user_suspended: "User suspended",
+  user_reactivated: "User reactivated",
+  user_deleted: "User deleted",
+  invitation_sent: "Invitation sent",
+  password_reset: "Password reset",
+  course_assigned: "Course assigned",
+}
+
+function auditActionLabel(action: string): string {
+  return AUDIT_LABELS[action] ?? action.replace(/_/g, " ")
+}
+
+function auditDescription(entry: AuditLogRow): string {
+  const actor = entry.actor_email ?? "System"
+  const target = entry.target_email ? ` → ${entry.target_email}` : ""
+  const courses = entry.details && Array.isArray((entry.details as { courses?: unknown }).courses)
+    ? ((entry.details as { courses: string[] }).courses.join(", "))
+    : ""
+  return `${actor}${target}${courses ? ` (${courses})` : ""}`
 }
