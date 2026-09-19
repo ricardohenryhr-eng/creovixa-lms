@@ -869,6 +869,29 @@ export const courses: Course[] = [
     modules: buildModules("Mental Health Interpreting"),
     resources,
   },
+  {
+    id: "cchi-13",
+    slug: "emergency-department-interpreting",
+    title: "Emergency Department Interpreting",
+    category: "Medical",
+    track: "cchi",
+    level: "Advanced",
+    description:
+      "A complete advanced course preparing healthcare interpreters to perform accurately and safely in the high-pressure environment of the emergency department: how the ED and triage are structured, common emergency conditions (chest pain, stroke, trauma, sepsis, respiratory distress), emergency terminology and abbreviations, and the fast-paced communication skills the setting demands. Includes quizzes and a 50-question final exam.",
+    instructor: "Sofia Marin",
+    lessonsCount: 14,
+    hours: 8,
+    enrolled: 465,
+    rating: 4.9,
+    progress: 0,
+    accentImage: "medical",
+    order: 13,
+    foundation: false,
+    certPrefix: "CEDI",
+    cert: oneYear,
+    modules: buildModules("Emergency Department Interpreting"),
+    resources,
+  },
 ]
 
 /**
