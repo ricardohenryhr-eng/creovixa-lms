@@ -938,6 +938,29 @@ export const courses: Course[] = [
     modules: buildModules("Obstetrics & Gynecology Interpreting"),
     resources,
   },
+  {
+    id: "cchi-16",
+    slug: "oncology-interpreting",
+    title: "Oncology Interpreting",
+    category: "Medical",
+    track: "cchi",
+    level: "Advanced",
+    description:
+      "A complete advanced course preparing healthcare interpreters for the oncology setting: an introduction to oncology covering cancer basics, tumors, and cancer staging; the major treatment methods including chemotherapy, radiation therapy, immunotherapy, and surgery; a full command of oncology terminology covering cancer vocabulary, diagnostic procedures, and treatment plans; and the sensitive skills of end-of-life communication across palliative care, hospice care, and ethical considerations. Includes quizzes and a 50-question final exam.",
+    instructor: "Sofia Marin",
+    lessonsCount: 13,
+    hours: 8,
+    enrolled: 401,
+    rating: 4.9,
+    progress: 0,
+    accentImage: "medical",
+    order: 16,
+    foundation: false,
+    certPrefix: "CONI",
+    cert: oneYear,
+    modules: buildModules("Oncology Interpreting"),
+    resources,
+  },
 ]
 
 /**
