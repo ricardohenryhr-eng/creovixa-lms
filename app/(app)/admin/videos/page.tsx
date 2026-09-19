@@ -24,7 +24,10 @@ interface VideoLessonRef {
   courseTitle: string
   category: string
   moduleTitle: string
+  /** Module-qualified lesson id (`moduleId::lessonId`) used as the DB/media key. */
   lessonId: string
+  /** Raw lesson id shown to admins (unique only within its module). */
+  rawLessonId: string
   lessonTitle: string
   key: string
 }
@@ -42,9 +45,10 @@ const videoLessons: VideoLessonRef[] = courses
           courseTitle: c.title,
           category: c.category,
           moduleTitle: m.title,
-          lessonId: l.id,
+          lessonId: `${m.id}::${l.id}`,
+          rawLessonId: l.id,
           lessonTitle: l.title,
-          key: `${c.slug}::${l.id}`,
+          key: `${c.slug}::${m.id}::${l.id}`,
         })),
     ),
   )
@@ -254,7 +258,7 @@ function AuditRow({ lesson, media, onSaved }: { lesson: VideoLessonRef; media: L
       >
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">{lesson.lessonTitle}</span>
-          <span className="truncate text-xs text-muted-foreground">{lesson.moduleTitle} · lesson {lesson.lessonId}</span>
+          <span className="truncate text-xs text-muted-foreground">{lesson.moduleTitle} · lesson {lesson.rawLessonId}</span>
         </span>
         <StatusBadge status={status} />
         <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />

@@ -94,7 +94,7 @@ export default function CourseDetailPage() {
       modules: course.modules.map((m) => ({
         ...m,
         lessons: m.lessons.map((l) => {
-          const v = videos[l.id]
+          const v = videos[`${m.id}::${l.id}`]
           if (!v) return l
           return {
             ...l,
