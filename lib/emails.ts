@@ -10,7 +10,7 @@ export const EMAIL_FROM_NAME = "Creovixa Learn"
 export const EMAIL_FROM_ADDRESS = "admin@creovixa.com"
 
 /** Branded login URL shown in onboarding emails. */
-export const LOGIN_URL = "https://lms.creovixa.com/user/sign-in"
+export const LOGIN_URL = "https://lms.creovixa.com/user/signin"
 
 const FOOTER = `Regards,
 
@@ -96,33 +96,24 @@ export function welcomeEmail(params: {
   invitedBy: string
 }): EmailMessage {
   // Phrase the enrollment line to match the number of assigned courses.
-  let enrollmentBlock: string
-  if (params.courses.length === 0) {
-    enrollmentBlock = `Your Creovixa LMS account has been created.`
-  } else if (params.courses.length === 1) {
-    enrollmentBlock = `You have been enrolled in the following course:
-${params.courses[0]}.`
-  } else {
-    enrollmentBlock = `You have been enrolled in the following courses:
+  const enrollmentBlock =
+    params.courses.length === 0
+      ? `Your Creovixa LMS account has been created.`
+      : `You have been enrolled in the following course(s):
+
 ${courseListText(params.courses)}`
-  }
 
   const body = `Hello ${params.fullName},
 
 ${enrollmentBlock}
 
-To take this course please log on to:
+To access your training, please log in here:
 ${LOGIN_URL}
-
-Your temporary login credentials:
 
 Email: ${params.email}
 Temporary Password: ${params.tempPassword}
 
-For security reasons, you will be required to create your own password on first login.
-
-Invited by:
-${params.invitedBy}
+For security reasons, you will be required to create your own password after your first login.
 
 ${FOOTER}`
   return { to: params.email, subject: "Welcome to Creovixa LMS", body, kind: "welcome" }
@@ -146,6 +137,28 @@ If you did not request a password reset, you can safely ignore this email and yo
 
 ${FOOTER}`
   return { to: params.email, subject: "Reset your Creovixa LMS password", body, kind: "password_reset" }
+}
+
+export function adminResetEmail(params: {
+  fullName: string
+  email: string
+  tempPassword: string
+}): EmailMessage {
+  const greetingName = params.fullName?.trim() ? params.fullName : "there"
+  const body = `Hello ${greetingName},
+
+Your Creovixa LMS password has been reset by an administrator.
+
+To access your training, please log in here:
+${LOGIN_URL}
+
+Email: ${params.email}
+Temporary Password: ${params.tempPassword}
+
+For security reasons, you will be required to create your own password after your next login.
+
+${FOOTER}`
+  return { to: params.email, subject: "Your Creovixa LMS password has been reset", body, kind: "password_reset" }
 }
 
 export function courseAssignmentEmail(params: {

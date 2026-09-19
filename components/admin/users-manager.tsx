@@ -13,6 +13,9 @@ import {
   X,
   ShieldCheck,
   ArrowUpCircle,
+  Pencil,
+  KeyRound,
+  Send,
   Loader2,
 } from "lucide-react"
 import { PageHeader, Card, Badge, Button, Input, Avatar } from "@/components/ui"
@@ -25,7 +28,17 @@ import {
   type Role,
   type AccountStatus,
 } from "@/lib/roles"
-import { createUser, assignCourses, suspendUser, reactivateUser, deleteUser, promoteToAdmin } from "@/app/actions/users"
+import {
+  createUser,
+  assignCourses,
+  suspendUser,
+  reactivateUser,
+  deleteUser,
+  promoteToAdmin,
+  updateUser,
+  adminResetPassword,
+  resendInvitation,
+} from "@/app/actions/users"
 import { cn, formatDate } from "@/lib/utils"
 
 interface CourseOption {
@@ -70,6 +83,7 @@ export function UsersManager({
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [assignFor, setAssignFor] = useState<Profile | null>(null)
+  const [editFor, setEditFor] = useState<Profile | null>(null)
   const [pending, startTransition] = useTransition()
   const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null)
 
@@ -236,6 +250,27 @@ export function UsersManager({
                             )}
                             {canModify(u) ? (
                               <>
+                                <button
+                                  onClick={() => {
+                                    setEditFor(u)
+                                    setMenuFor(null)
+                                  }}
+                                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
+                                >
+                                  <Pencil className="h-4 w-4" /> Edit user
+                                </button>
+                                <button
+                                  onClick={() => act(() => adminResetPassword(u.id))}
+                                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
+                                >
+                                  <KeyRound className="h-4 w-4" /> Reset password
+                                </button>
+                                <button
+                                  onClick={() => act(() => resendInvitation(u.id))}
+                                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
+                                >
+                                  <Send className="h-4 w-4" /> Resend invitation
+                                </button>
                                 {u.status === "suspended" ? (
                                   <button
                                     onClick={() => act(() => reactivateUser(u.id))}
@@ -313,7 +348,93 @@ export function UsersManager({
           }
         />
       )}
+      {editFor && (
+        <EditUserModal
+          user={editFor}
+          canMakeAdmins={canMakeAdmins}
+          pending={pending}
+          onClose={() => setEditFor(null)}
+          onSave={(input) =>
+            startTransition(async () => {
+              const res = await updateUser({ userId: editFor.id, ...input })
+              if (res.ok) setEditFor(null)
+              flash(res)
+            })
+          }
+        />
+      )}
     </div>
+  )
+}
+
+function EditUserModal({
+  user,
+  canMakeAdmins,
+  pending,
+  onClose,
+  onSave,
+}: {
+  user: Profile
+  canMakeAdmins: boolean
+  pending: boolean
+  onClose: () => void
+  onSave: (input: { firstName: string; lastName: string; role: Role }) => void
+}) {
+  // Admins may only be re-assigned by a Super Admin; keep the current role selectable.
+  const roles: Role[] = canMakeAdmins ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((r) => r !== "admin")
+  const [firstName, setFirstName] = useState(user.first_name ?? "")
+  const [lastName, setLastName] = useState(user.last_name ?? "")
+  const [role, setRole] = useState<Role>(user.role)
+
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    onSave({ firstName, lastName, role })
+  }
+
+  return (
+    <Modal title={`Edit ${user.full_name || user.email}`} onClose={onClose}>
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">First name</span>
+            <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Last name</span>
+            <Input value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+          </label>
+        </div>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">Email address</span>
+          <Input value={user.email} disabled className="opacity-70" />
+          <span className="text-xs text-muted-foreground">Email is the account identifier and cannot be changed.</span>
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">Role</span>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as Role)}
+            className="h-10 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {roles.map((r) => (
+              <option key={r} value={r}>
+                {roleLabels[r]}
+              </option>
+            ))}
+          </select>
+          {!canMakeAdmins && <span className="text-xs text-muted-foreground">Only a Super Admin can grant the Admin role.</span>}
+        </label>
+        <div className="mt-2 flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={pending}>
+            {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Save changes
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 

@@ -140,8 +140,6 @@ export function LessonViewer({
             <div className="mt-3 flex flex-col gap-5">
               {kc.map((q, qi) => {
                 const selected = answers[q.id]
-                const isCorrect = submitted && selected === q.answer
-                const isWrong = submitted && selected !== undefined && selected !== q.answer
                 return (
                   <div key={q.id} className="rounded-lg border border-border p-4">
                     <p className="text-sm font-medium">
@@ -150,7 +148,9 @@ export function LessonViewer({
                     <div className="mt-3 flex flex-col gap-2">
                       {q.options.map((opt, oi) => {
                         const chosen = selected === oi
-                        const showCorrect = submitted && oi === q.answer
+                        // Never reveal the correct option after a wrong attempt: the
+                        // correct answer is only highlighted once the whole check is passed.
+                        const showCorrect = submitted && kcPassed && oi === q.answer
                         const showWrong = submitted && chosen && oi !== q.answer
                         return (
                           <button
@@ -180,8 +180,8 @@ export function LessonViewer({
                         )
                       })}
                     </div>
-                    {submitted && (isCorrect || isWrong) && q.explanation && (
-                      <p className={cn("mt-2 text-xs", isCorrect ? "text-success" : "text-muted-foreground")}>{q.explanation}</p>
+                    {submitted && kcPassed && q.explanation && (
+                      <p className="mt-2 text-xs text-success">{q.explanation}</p>
                     )}
                   </div>
                 )

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { generateTempPassword } from "@/lib/password"
-import { welcomeEmail, courseAssignmentEmail, sendEmail } from "@/lib/emails"
+import { welcomeEmail, courseAssignmentEmail, adminResetEmail, sendEmail } from "@/lib/emails"
 import { ASSIGNABLE_ROLES, isSuperAdminEmail, type Role } from "@/lib/roles"
 
 interface ActionResult {
@@ -12,6 +12,8 @@ interface ActionResult {
   error?: string
   message?: string
 }
+
+type AdminClient = ReturnType<typeof createAdminClient>
 
 /**
  * Resolve the calling user's profile and enforce that they are an admin.
@@ -31,7 +33,29 @@ async function requireAdmin(): Promise<
   return { profile: data as { id: string; email: string; role: Role } }
 }
 
-async function courseTitles(admin: ReturnType<typeof createAdminClient>, courseIds: string[]): Promise<string[]> {
+/**
+ * Append a row to the immutable audit log. Failures are swallowed (logged only)
+ * so an audit hiccup can never roll back the underlying admin action.
+ */
+async function logAudit(
+  admin: AdminClient,
+  actor: { id: string; email: string },
+  action: string,
+  target?: { id?: string; email?: string },
+  details?: Record<string, unknown>,
+): Promise<void> {
+  const { error } = await admin.from("audit_log").insert({
+    actor_id: actor.id,
+    actor_email: actor.email,
+    action,
+    target_id: target?.id ?? null,
+    target_email: target?.email ?? null,
+    details: details ?? null,
+  })
+  if (error) console.log("[v0] audit_log insert failed:", error.message)
+}
+
+async function courseTitles(admin: AdminClient, courseIds: string[]): Promise<string[]> {
   if (!courseIds.length) return []
   const { data } = await admin.from("courses").select("id, title").in("id", courseIds)
   const byId = new Map((data ?? []).map((c: { id: string; title: string }) => [c.id, c.title]))
@@ -114,7 +138,11 @@ export async function createUser(input: {
     welcomeEmail({ fullName, email, tempPassword, courses: titles, invitedBy: auth.profile.email }),
   )
 
+  await logAudit(admin, auth.profile, "user_created", { id: userId, email }, { role: input.role, courses: titles })
+  await logAudit(admin, auth.profile, "invitation_sent", { id: userId, email }, { kind: "welcome" })
+
   revalidatePath("/admin/users")
+  revalidatePath("/admin")
   revalidatePath("/admin/dashboard")
   return {
     ok: true,
@@ -144,18 +172,29 @@ export async function assignCourses(input: { userId: string; courseIds: string[]
   const titles = await courseTitles(admin, toAdd)
   await sendEmail(courseAssignmentEmail({ fullName: profile.full_name, email: profile.email, courses: titles }))
 
+  await logAudit(admin, auth.profile, "course_assigned", { id: input.userId, email: profile.email }, { courses: titles })
+
   revalidatePath("/admin/users")
+  revalidatePath("/admin")
   revalidatePath("/dashboard")
   return { ok: true, message: `Assigned ${toAdd.length} course(s) and recorded a notification email.` }
 }
 
 async function guardTarget(userId: string, opts: { requireSuper?: boolean }): Promise<
-  { admin: ReturnType<typeof createAdminClient>; callerEmail: string } | { error: string }
+  {
+    admin: AdminClient
+    caller: { id: string; email: string }
+    target: { email: string; role: Role; full_name: string }
+  } | { error: string }
 > {
   const auth = await requireAdmin()
   if ("error" in auth) return { error: auth.error }
   const admin = createAdminClient()
-  const { data: target } = await admin.from("profiles").select("email, role, permanent").eq("id", userId).single()
+  const { data: target } = await admin
+    .from("profiles")
+    .select("email, role, permanent, full_name")
+    .eq("id", userId)
+    .single()
   if (!target) return { error: "User not found." }
   if (target.permanent || target.role === "super_admin") return { error: "The Super Admin account is protected." }
   if (target.role === "admin" && !isSuperAdminEmail(auth.profile.email)) {
@@ -164,14 +203,110 @@ async function guardTarget(userId: string, opts: { requireSuper?: boolean }): Pr
   if (opts.requireSuper && !isSuperAdminEmail(auth.profile.email)) {
     return { error: "Only the Super Admin can perform this action." }
   }
-  return { admin, callerEmail: auth.profile.email }
+  return {
+    admin,
+    caller: { id: auth.profile.id, email: auth.profile.email },
+    target: target as { email: string; role: Role; full_name: string },
+  }
+}
+
+export async function updateUser(input: {
+  userId: string
+  firstName: string
+  lastName: string
+  role: Role
+}): Promise<ActionResult> {
+  const g = await guardTarget(input.userId, {})
+  if ("error" in g) return { ok: false, error: g.error }
+
+  const firstName = input.firstName.trim()
+  const lastName = input.lastName.trim()
+  if (!firstName || !lastName) return { ok: false, error: "First and last name are required." }
+  if (!ASSIGNABLE_ROLES.includes(input.role)) return { ok: false, error: "Invalid role." }
+  // Promoting to Admin (or changing an Admin's role) is a Super-Admin-only action.
+  if ((input.role === "admin" || g.target.role === "admin") && !isSuperAdminEmail(g.caller.email)) {
+    return { ok: false, error: "Only the Super Admin can manage Admin accounts." }
+  }
+
+  const fullName = `${firstName} ${lastName}`
+  await g.admin
+    .from("profiles")
+    .update({ first_name: firstName, last_name: lastName, full_name: fullName, role: input.role, updated_at: new Date().toISOString() })
+    .eq("id", input.userId)
+  // Keep auth metadata in sync.
+  await g.admin.auth.admin.updateUserById(input.userId, {
+    user_metadata: { first_name: firstName, last_name: lastName, role: input.role },
+  })
+
+  await logAudit(g.admin, g.caller, "user_updated", { id: input.userId, email: g.target.email }, {
+    full_name: fullName,
+    role: input.role,
+  })
+
+  revalidatePath("/admin/users")
+  revalidatePath("/admin")
+  return { ok: true, message: `${fullName} updated.` }
+}
+
+export async function adminResetPassword(userId: string): Promise<ActionResult> {
+  const g = await guardTarget(userId, {})
+  if ("error" in g) return { ok: false, error: g.error }
+
+  const tempPassword = generateTempPassword(20)
+  const { error } = await g.admin.auth.admin.updateUserById(userId, { password: tempPassword })
+  if (error) return { ok: false, error: error.message }
+
+  // Force a fresh password on next login and re-arm the temporary credential.
+  await g.admin.from("profiles").update({ password_changed: false, updated_at: new Date().toISOString() }).eq("id", userId)
+  await g.admin.from("onboarding").upsert({ user_id: userId, status: "pending_first_login", temp_password_active: true })
+
+  await sendEmail(adminResetEmail({ fullName: g.target.full_name, email: g.target.email, tempPassword }))
+  await logAudit(g.admin, g.caller, "password_reset", { id: userId, email: g.target.email })
+
+  revalidatePath("/admin/users")
+  revalidatePath("/admin")
+  return { ok: true, message: `A new temporary password was emailed to ${g.target.email}.` }
+}
+
+export async function resendInvitation(userId: string): Promise<ActionResult> {
+  const g = await guardTarget(userId, {})
+  if ("error" in g) return { ok: false, error: g.error }
+
+  const tempPassword = generateTempPassword(20)
+  const { error } = await g.admin.auth.admin.updateUserById(userId, { password: tempPassword })
+  if (error) return { ok: false, error: error.message }
+
+  await g.admin.from("profiles").update({ password_changed: false, updated_at: new Date().toISOString() }).eq("id", userId)
+  await g.admin.from("onboarding").upsert({ user_id: userId, status: "pending_first_login", temp_password_active: true })
+
+  // Re-send the full invitation, including the current course enrollment.
+  const { data: enr } = await g.admin.from("enrollments").select("course_id").eq("user_id", userId)
+  const titles = await courseTitles(g.admin, (enr ?? []).map((e: { course_id: string }) => e.course_id))
+  const { data: caller } = await g.admin.from("profiles").select("invited_by").eq("id", userId).single()
+
+  await sendEmail(
+    welcomeEmail({
+      fullName: g.target.full_name,
+      email: g.target.email,
+      tempPassword,
+      courses: titles,
+      invitedBy: (caller?.invited_by as string) || g.caller.email,
+    }),
+  )
+  await logAudit(g.admin, g.caller, "invitation_sent", { id: userId, email: g.target.email }, { kind: "resend" })
+
+  revalidatePath("/admin/users")
+  revalidatePath("/admin")
+  return { ok: true, message: `Invitation with a new temporary password re-sent to ${g.target.email}.` }
 }
 
 export async function suspendUser(userId: string): Promise<ActionResult> {
   const g = await guardTarget(userId, {})
   if ("error" in g) return { ok: false, error: g.error }
   await g.admin.from("profiles").update({ status: "suspended", updated_at: new Date().toISOString() }).eq("id", userId)
+  await logAudit(g.admin, g.caller, "user_suspended", { id: userId, email: g.target.email })
   revalidatePath("/admin/users")
+  revalidatePath("/admin")
   return { ok: true, message: "Account suspended." }
 }
 
@@ -179,7 +314,9 @@ export async function reactivateUser(userId: string): Promise<ActionResult> {
   const g = await guardTarget(userId, {})
   if ("error" in g) return { ok: false, error: g.error }
   await g.admin.from("profiles").update({ status: "reactivated", updated_at: new Date().toISOString() }).eq("id", userId)
+  await logAudit(g.admin, g.caller, "user_reactivated", { id: userId, email: g.target.email })
   revalidatePath("/admin/users")
+  revalidatePath("/admin")
   return { ok: true, message: "Account reactivated." }
 }
 
@@ -187,17 +324,22 @@ export async function promoteToAdmin(userId: string): Promise<ActionResult> {
   const g = await guardTarget(userId, { requireSuper: true })
   if ("error" in g) return { ok: false, error: g.error }
   await g.admin.from("profiles").update({ role: "admin", updated_at: new Date().toISOString() }).eq("id", userId)
+  await logAudit(g.admin, g.caller, "user_updated", { id: userId, email: g.target.email }, { role: "admin", promoted: true })
   revalidatePath("/admin/users")
+  revalidatePath("/admin")
   return { ok: true, message: "User promoted to Admin." }
 }
 
 export async function deleteUser(userId: string): Promise<ActionResult> {
   const g = await guardTarget(userId, {})
   if ("error" in g) return { ok: false, error: g.error }
+  const targetEmail = g.target.email
   // Removing the auth user cascades to profile/enrollments/onboarding.
   const { error } = await g.admin.auth.admin.deleteUser(userId)
   if (error) return { ok: false, error: error.message }
+  await logAudit(g.admin, g.caller, "user_deleted", { email: targetEmail })
   revalidatePath("/admin/users")
+  revalidatePath("/admin")
   revalidatePath("/admin/dashboard")
   return { ok: true, message: "Account deleted." }
 }

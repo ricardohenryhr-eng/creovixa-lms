@@ -8,6 +8,7 @@ import { Button, Input } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
 import { completeFirstLogin } from "@/app/actions/auth"
 import { validatePassword } from "@/lib/password"
+import { isAdminRole } from "@/lib/roles"
 import { cn } from "@/lib/utils"
 
 const RULES: { label: string; test: (pw: string) => boolean }[] = [
@@ -29,12 +30,14 @@ function SetPasswordInner() {
   const [error, setError] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
+  const home = isAdminRole(user?.role) ? "/admin" : "/dashboard"
+
   // If someone lands here without a session, send them to sign in.
   useEffect(() => {
     if (!loading && !user) router.replace("/login")
     // First-login users must stay; reset users may already have password_changed=true.
-    if (!loading && user && !user.mustChangePassword && !isReset) router.replace("/dashboard")
-  }, [loading, user, router, isReset])
+    if (!loading && user && !user.mustChangePassword && !isReset) router.replace(home)
+  }, [loading, user, router, isReset, home])
 
   const check = validatePassword(password)
   const matches = password.length > 0 && password === confirm
@@ -51,7 +54,7 @@ function SetPasswordInner() {
       return
     }
     await refresh()
-    router.replace("/dashboard")
+    router.replace(home)
   }
 
   if (loading || !user) {
