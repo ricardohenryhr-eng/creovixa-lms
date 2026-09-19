@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next"
-import { Inter, Plus_Jakarta_Sans } from "next/font/google"
+import { Inter, Plus_Jakarta_Sans, Great_Vibes } from "next/font/google"
 import { AuthProvider } from "@/lib/auth"
 import "./globals.css"
 
@@ -8,6 +8,13 @@ const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-jakarta",
   weight: ["500", "600", "700", "800"],
+  display: "swap",
+})
+// Formal script used for the recipient name on Creovixa certificates.
+const greatVibes = Great_Vibes({
+  subsets: ["latin"],
+  variable: "--font-great-vibes",
+  weight: ["400"],
   display: "swap",
 })
 
@@ -26,7 +33,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jakarta.variable} bg-background`}>
+    <html lang="en" className={`${inter.variable} ${jakarta.variable} ${greatVibes.variable} bg-background`}>
       <body className="font-sans antialiased">
         <AuthProvider>{children}</AuthProvider>
       </body>
