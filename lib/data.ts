@@ -915,6 +915,29 @@ export const courses: Course[] = [
     modules: buildModules("Pediatrics Interpreting"),
     resources,
   },
+  {
+    id: "cchi-15",
+    slug: "obstetrics-gynecology-interpreting",
+    title: "Obstetrics & Gynecology Interpreting",
+    category: "Medical",
+    track: "cchi",
+    level: "Advanced",
+    description:
+      "A complete advanced course preparing healthcare interpreters for the obstetrics and gynecology setting: obstetric care across pregnancy, prenatal care, labor and delivery, and the postpartum period; gynecologic care including women's health, reproductive health, and preventive care; and a full command of OB/GYN terminology covering procedures, conditions, and medications. Includes quizzes and a 50-question final exam.",
+    instructor: "Sofia Marin",
+    lessonsCount: 10,
+    hours: 8,
+    enrolled: 438,
+    rating: 4.9,
+    progress: 0,
+    accentImage: "medical",
+    order: 15,
+    foundation: false,
+    certPrefix: "COGI",
+    cert: oneYear,
+    modules: buildModules("Obstetrics & Gynecology Interpreting"),
+    resources,
+  },
 ]
 
 /**
