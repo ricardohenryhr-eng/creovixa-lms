@@ -10,6 +10,8 @@ import { MEDICAL_PROGRAM_HOURS, MEDICAL_PROGRAM_TITLE } from "@/lib/certificates
 import type { Certificate, Course } from "@/lib/data"
 import { useAuth } from "@/lib/auth"
 import { useProgress } from "@/lib/progress"
+import { useProgressionBypass } from "@/lib/use-progression-bypass"
+import { AdminPreviewBadge } from "@/components/admin-preview-badge"
 import { issueCertificate } from "@/app/actions/certificates"
 import {
   orderedCourses,
@@ -30,6 +32,7 @@ export default function CertificatesPage() {
   const { user } = useAuth()
   const recipient = user?.name ?? "Creovixa Learner"
   const { state, ensureCertCode } = useProgress()
+  const bypass = useProgressionBypass()
   const [active, setActive] = useState<Certificate | null>(null)
   const certRef = useRef<HTMLDivElement>(null)
 
@@ -66,9 +69,12 @@ export default function CertificatesPage() {
         variant: medical ? "medical" : "standard",
         hours: medical ? MEDICAL_PROGRAM_HOURS : course.hours,
       }
-      return { course, access: finalAccess, cert, expired }
+      // Staff preview every certificate for QA. `access` stays the real learner
+      // result so preview never issues certificates or generates access codes.
+      const displayAccess = bypass ? { ...finalAccess, earned: true, accessible: true } : finalAccess
+      return { course, access: finalAccess, displayAccess, cert, expired }
     })
-  }, [state, recipient])
+  }, [state, recipient, bypass])
 
   // A protected certificate's secure access code is generated automatically the
   // moment its requirements are met. The learner never sees the code itself.
@@ -116,17 +122,21 @@ export default function CertificatesPage() {
         }
       />
 
+      {bypass && (
+        <AdminPreviewBadge className="mb-4" detail="All certificates viewable for QA · nothing is issued" />
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {rows.map(({ course, access, cert, expired }) => (
+        {rows.map(({ course, displayAccess, cert, expired }) => (
           <CertCard
             key={course.id}
             course={course}
             cert={cert}
             expired={expired}
-            earned={access.earned}
-            accessible={access.accessible}
-            reason={access.reason}
-            availableOn={access.availableOn}
+            earned={displayAccess.earned}
+            accessible={displayAccess.accessible}
+            reason={displayAccess.reason}
+            availableOn={displayAccess.availableOn}
             onView={() => setActive(cert)}
           />
         ))}
