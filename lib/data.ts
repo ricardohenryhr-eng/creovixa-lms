@@ -85,6 +85,12 @@ export interface Lesson {
   terminology?: TermItem[]
   /** Inline knowledge check the learner must pass to complete the lesson. */
   knowledgeCheck?: KnowledgeQuestion[]
+  /** Admin-authored training notes (lightweight rich text); replaces `content` when set. */
+  body?: string
+  /** Images and diagrams shown below the lesson video. */
+  images?: { url: string; caption?: string }[]
+  /** Downloadable PDF attachments for the lesson. */
+  attachments?: { name: string; url: string }[]
 }
 
 export interface Module {

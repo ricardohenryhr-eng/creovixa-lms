@@ -48,6 +48,7 @@ export const adminNav: AdminNavItem[] = [
   { href: "/admin", label: "Overview", section: "dashboard", icon: ShieldCheck },
   { href: "/admin/users", label: "User Management", section: "users", icon: Users },
   { href: "/admin/courses", label: "Course Management", section: "courses", icon: BookOpen },
+  { href: "/admin/lessons", label: "Lesson Content", section: "courses", icon: BookOpen },
   { href: "/admin/videos", label: "Video Content", section: "videos", icon: Video },
   { href: "/admin/certificates", label: "Certificate Management", section: "certificates", icon: Award },
   { href: "/admin/certificate-templates", label: "Certificate Templates", section: "certificates", icon: LayoutTemplate },

@@ -15,7 +15,10 @@ import {
   Clock,
   FileText,
   Headphones,
+  ImageIcon,
+  Paperclip,
 } from "lucide-react"
+import { RichText } from "@/components/rich-text"
 import { Card, Badge, Button } from "@/components/ui"
 import { Watermark } from "@/components/content-protection"
 import type { Lesson } from "@/lib/data"
@@ -36,6 +39,7 @@ export function LessonViewer({
   onComplete,
   index,
   total,
+  videoFree = false,
 }: {
   lesson: Lesson
   viewer: string
@@ -43,8 +47,10 @@ export function LessonViewer({
   onComplete: () => void
   index: number
   total: number
+  /** Text/image/quiz-only course: never render or require a video. */
+  videoFree?: boolean
 }) {
-  const source = useMemo(() => parseVideoSource(lesson.videoUrl), [lesson.videoUrl])
+  const source = useMemo(() => parseVideoSource(videoFree ? null : lesson.videoUrl), [lesson.videoUrl, videoFree])
   const hasVideo = source.kind !== "none"
   const kc = lesson.knowledgeCheck ?? []
   const hasKc = kc.length > 0
@@ -78,7 +84,7 @@ export function LessonViewer({
           onWatched={() => setWatched(true)}
           watched={watched}
         />
-      ) : lesson.type === "video" ? (
+      ) : lesson.type === "video" && !videoFree ? (
         <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-dashed border-border bg-muted text-muted-foreground">
           <div className="flex flex-col items-center gap-2 text-center">
             <Video className="h-7 w-7" />
@@ -87,6 +93,9 @@ export function LessonViewer({
           </div>
         </div>
       ) : null}
+
+      {/* Images and diagrams sit directly below the video */}
+      {lesson.images?.length ? <LessonImages images={lesson.images} /> : null}
 
       {/* Transcript */}
       {lesson.transcript?.trim() ? <Transcript text={lesson.transcript} /> : null}
@@ -128,9 +137,16 @@ export function LessonViewer({
         ) : null}
 
         {/* Written training material */}
-        {lesson.content?.length ? (
+        {lesson.body?.trim() ? (
           <section className="mt-6">
-            <SectionTitle icon={BookOpen}>Training material</SectionTitle>
+            <SectionTitle icon={BookOpen}>Training notes</SectionTitle>
+            <div className="mt-3">
+              <RichText text={lesson.body} />
+            </div>
+          </section>
+        ) : lesson.content?.length ? (
+          <section className="mt-6">
+            <SectionTitle icon={BookOpen}>Training notes</SectionTitle>
             <div className="mt-3 flex flex-col gap-4">
               {lesson.content.map((p, i) => (
                 <p key={i} className="text-pretty text-sm leading-relaxed text-foreground/90">
@@ -144,7 +160,7 @@ export function LessonViewer({
         {/* Key terminology */}
         {lesson.terminology?.length ? (
           <section className="mt-6">
-            <SectionTitle icon={GraduationCap}>Key terminology</SectionTitle>
+            <SectionTitle icon={GraduationCap}>Vocabulary</SectionTitle>
             <dl className="mt-3 overflow-hidden rounded-lg border border-border">
               {lesson.terminology.map((t, i) => (
                 <div key={i} className={cn("grid gap-1 px-4 py-3 sm:grid-cols-[minmax(0,180px)_1fr] sm:gap-4", i % 2 === 1 && "bg-muted/40")}>
@@ -156,7 +172,30 @@ export function LessonViewer({
           </section>
         ) : null}
 
-        {/* Knowledge check */}
+        {/* PDF attachments */}
+        {lesson.attachments?.length ? (
+          <section className="mt-6">
+            <SectionTitle icon={Paperclip}>Lesson documents</SectionTitle>
+            <ul className="mt-3 flex flex-col gap-2">
+              {lesson.attachments.map((a, i) => (
+                <li key={i}>
+                  <a
+                    href={a.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-lg border border-border px-4 py-3 text-sm font-medium transition hover:bg-muted"
+                  >
+                    <FileText className="h-4 w-4 shrink-0 text-primary" />
+                    <span className="flex-1 truncate">{a.name}</span>
+                    <span className="text-xs text-muted-foreground">PDF</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {/* Knowledge check (always last) */}
         {hasKc && (
           <section className="mt-6">
             <SectionTitle icon={ListChecks}>Knowledge check</SectionTitle>
@@ -276,6 +315,29 @@ function SectionTitle({ icon: Icon, children }: { icon: typeof Target; children:
       <Icon className="h-4 w-4 text-primary" />
       {children}
     </h3>
+  )
+}
+
+/** Lesson images and diagrams, each with an optional caption. */
+function LessonImages({ images }: { images: { url: string; caption?: string }[] }) {
+  return (
+    <Card className="p-5 sm:p-6">
+      <SectionTitle icon={ImageIcon}>Images &amp; diagrams</SectionTitle>
+      <div className={cn("mt-4 grid gap-4", images.length > 1 && "sm:grid-cols-2")}>
+        {images.map((img, i) => (
+          <figure key={i} className="flex flex-col gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element -- admin-uploaded images on arbitrary storage hosts */}
+            <img
+              src={img.url}
+              alt={img.caption || `Lesson diagram ${i + 1}`}
+              loading="lazy"
+              className="w-full rounded-lg border border-border bg-muted object-contain"
+            />
+            {img.caption ? <figcaption className="text-xs text-muted-foreground">{img.caption}</figcaption> : null}
+          </figure>
+        ))}
+      </div>
+    </Card>
   )
 }
 

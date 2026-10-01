@@ -31,6 +31,7 @@ import { useProgress } from "@/lib/progress"
 import { getCourse } from "@/lib/data"
 import type { Course, LessonType } from "@/lib/data"
 import { formatDuration } from "@/lib/video"
+import { isVideoFreeCourse, lessonKey, type LessonContentRow } from "@/lib/lesson-content"
 import {
   previousCourse,
   courseAssessment,
@@ -62,14 +63,7 @@ const typeLabel: Record<LessonType, string> = {
   pdf: "Document",
 }
 
-interface LessonMedia {
-  videoUrl: string | null
-  transcript: string | null
-  audioUrl: string | null
-  durationSeconds: number | null
-}
-
-const videosFetcher = (url: string): Promise<{ videos: Record<string, LessonMedia> }> =>
+const videosFetcher = (url: string): Promise<{ videos: Record<string, LessonContentRow> }> =>
   fetch(url).then((r) => (r.ok ? r.json() : { videos: {} }))
 
 export default function CourseDetailPage() {
@@ -86,27 +80,33 @@ export default function CourseDetailPage() {
   // audio drill, duration) onto the static lesson data. Until an admin adds a
   // video for a lesson, no URL exists and the player shows "coming soon".
   const { data: videoData } = useSWR(`/api/lesson-videos/${course.slug}`, videosFetcher)
+  const videoFree = isVideoFreeCourse(course.slug)
   const vcourse = useMemo<Course>(() => {
-    const videos = videoData?.videos
-    if (!videos) return course
+    const videos = videoData?.videos ?? {}
     return {
       ...course,
       modules: course.modules.map((m) => ({
         ...m,
         lessons: m.lessons.map((l) => {
-          const v = videos[`${m.id}::${l.id}`]
-          if (!v) return l
+          const base = videoFree ? { ...l, videoUrl: undefined } : l
+          const v = videos[lessonKey(m.id, l.id)]
+          if (!v) return base
           return {
-            ...l,
-            videoUrl: v.videoUrl ?? l.videoUrl,
-            transcript: v.transcript ?? l.transcript,
-            audioUrl: v.audioUrl ?? l.audioUrl,
-            duration: formatDuration(v.durationSeconds) ?? l.duration,
+            ...base,
+            videoUrl: videoFree ? undefined : (v.videoUrl ?? base.videoUrl),
+            transcript: v.transcript ?? base.transcript,
+            audioUrl: v.audioUrl ?? base.audioUrl,
+            duration: formatDuration(v.durationSeconds) ?? base.duration,
+            body: v.body ?? base.body,
+            images: v.images?.length ? v.images : base.images,
+            terminology: v.vocabulary?.length ? v.vocabulary : base.terminology,
+            knowledgeCheck: v.quiz?.length ? v.quiz : base.knowledgeCheck,
+            attachments: v.attachments?.length ? v.attachments : base.attachments,
           }
         }),
       })),
     }
-  }, [course, videoData])
+  }, [course, videoData, videoFree])
 
   const lessons = useMemo(() => lessonList(vcourse), [vcourse])
   const completedSet = completedLessonSet(course, state)
@@ -214,6 +214,7 @@ export default function CourseDetailPage() {
               onComplete={() => markComplete(currentLesson.id)}
               index={currentIndex}
               total={lessons.length}
+              videoFree={videoFree}
             />
           )}
 
