@@ -1,5 +1,6 @@
 import type { Lesson, Module, Resource } from "@/lib/data"
 import type { CourseContent } from "@/lib/course-content"
+import { extraLessons, lessonScenarios, moduleQuizzes } from "@/lib/medical-curriculum"
 
 /**
  * 40-Hour Medical Interpreter Training — the full 13-module program.
@@ -365,31 +366,33 @@ const specs: LessonSpec[] = [
   {
     moduleTitle: M[7],
     id: "l11",
-    title: "Emergency, mental health, oncology, and pediatrics",
+    title: "Oncology, end-of-life care, and interpreter self-care",
     duration: "7:31",
     type: "video",
     videoUrl: yt("ZwWT7xmCFRI"),
     images: [{ url: "/images/medical/m11-specialty.png", caption: "Specialty settings bring unique pace, vocabulary, and emotional demands." }],
     objectives: [
-      "Adapt interpreting techniques to emergency and mental health settings",
-      "Prepare for oncology, pediatric, and end-of-life encounters",
+      "Interpret cancer diagnosis, staging, and treatment conversations accurately",
+      "Support goals-of-care, palliative, and hospice discussions",
       "Practice self-care to manage vicarious trauma",
     ],
     content: [
-      "Emergency departments move quickly, with many speakers, interruptions, and urgent decisions. Stay calm, keep segments short, prioritize accuracy for allergies, medications, and consent, and switch to simultaneous briefly when needed. Identify yourself to each new team member.",
-      "In mental health, the patient's exact words, hesitations, and even incoherence carry clinical meaning. Do not tidy up speech — interpret confusing or disorganized speech as it is and inform the provider if something is linguistically unclear. Brief with the clinician beforehand, keep a consistent interpreter when possible, and preserve emotional tone.",
-      "Oncology and end-of-life care involve difficult news. Interpret completely even when the content is painful; do not soften a diagnosis. Pediatric encounters involve parents and children; interpret for each speaker, including the child, and preserve age-appropriate language.",
+      "Oncology conversations follow a predictable arc: diagnosis (often after a biopsy), staging (how far the cancer has spread, usually stage 0 to IV, sometimes with TNM classification: tumor, nodes, metastasis), and treatment planning. Treatments include surgery, chemotherapy, radiation, immunotherapy, targeted therapy, and hormone therapy. Terms such as 'malignant' (cancerous), 'benign' (not cancerous), 'remission', and 'recurrence' must be rendered precisely.",
+      "Difficult news must be interpreted completely. Do not soften a diagnosis or prognosis, and do not add reassurance. Some families ask that the patient not be told; interpret that request transparently to the provider, who will explore the patient's own wishes about how information is shared. Preserve the provider's pacing, including silences.",
+      "Palliative care focuses on comfort and quality of life at any stage of serious illness; hospice is palliative care for patients expected to live six months or less who are no longer seeking curative treatment. Goals-of-care conversations cover what matters most to the patient, code status (whether to attempt CPR), and advance directives. Interpret these terms by meaning, as many languages have no direct equivalent.",
       "Repeated exposure to suffering can cause vicarious trauma. Build self-care habits: debrief (without identifying details) with supervisors, set boundaries, rest between difficult assignments, and seek support through employee assistance programs.",
     ],
     terminology: [
-      { term: "Triage", definition: "Sorting patients by the urgency of their condition." },
-      { term: "Vicarious trauma", definition: "Emotional strain from repeated exposure to others' traumatic experiences." },
+      { term: "Metastasis", definition: "The spread of cancer from its original site to other parts of the body." },
+      { term: "Remission", definition: "A decrease or disappearance of signs and symptoms of cancer." },
       { term: "Palliative care", definition: "Care focused on comfort and quality of life in serious illness." },
-      { term: "Informed consent", definition: "A patient's voluntary agreement after understanding risks, benefits, and alternatives." },
+      { term: "Hospice", definition: "Comfort care for patients near the end of life who are no longer seeking curative treatment." },
+      { term: "Code status", definition: "A patient's decision about resuscitation (for example, Full Code or Do Not Resuscitate)." },
+      { term: "Vicarious trauma", definition: "Emotional strain from repeated exposure to others' traumatic experiences." },
     ],
-    summary: "Specialty settings bring specific demands: speed and stress in emergency care, preserving disorganized speech in mental health, emotional weight in oncology, and family dynamics in pediatrics. Prepare terminology in advance and practice self-care after difficult sessions.",
+    summary: "Oncology and end-of-life encounters require precise rendering of diagnosis, staging, and treatment terms, complete interpretation of difficult news without softening, careful handling of palliative and hospice concepts, and deliberate self-care afterward.",
     knowledgeCheck: [
-      { id: "k1", question: "A mental health patient speaks in disorganized sentences. You should:", options: ["Make the sentences coherent", "Interpret the speech as it is, noting any linguistic ambiguity", "Summarize the main idea", "Stop interpreting"], answer: 1 },
+      { id: "k1", question: "'Metastasis' means:", options: ["The cancer has shrunk", "The cancer has spread to other parts of the body", "The tumor is benign", "The patient is in remission"], answer: 1 },
       { id: "k2", question: "When a provider delivers a cancer diagnosis, the interpreter should:", options: ["Soften the message to protect the patient", "Interpret it completely and accurately", "Let a family member interpret instead", "Wait for the patient to ask"], answer: 1 },
     ],
   },
@@ -522,13 +525,32 @@ const specs: LessonSpec[] = [
 
 const modules: Module[] = M.map((title, i) => {
   const moduleId = `m${i + 1}`
-  const lessons = specs
+  const original = specs
     .filter((s) => s.moduleTitle === title)
-    .map(({ moduleTitle: _moduleTitle, ...lesson }) => ({
-      ...lesson,
-      completed: false,
-      attachments: [notes(moduleId, lesson.id)],
-    }))
+    .map(({ moduleTitle: _moduleTitle, ...lesson }) => ({ ...lesson, scenario: lessonScenarios[lesson.id] }))
+  const extras = extraLessons.filter((e) => e.moduleIndex === i).map(({ moduleIndex: _m, first: _f, ...l }) => l)
+  const leading = extraLessons.filter((e) => e.moduleIndex === i && e.first).map((e) => e.id)
+  const ordered = [
+    ...extras.filter((l) => leading.includes(l.id)),
+    ...original,
+    ...extras.filter((l) => !leading.includes(l.id)),
+  ]
+  const quiz: Omit<Lesson, "completed" | "attachments"> = {
+    id: `mq${i + 1}`,
+    title: `Module ${i + 1} quiz: ${title}`,
+    duration: "15 min",
+    type: "reading",
+    objectives: [`Confirm your mastery of the key concepts in ${title}`],
+    content: [
+      `This quiz reviews the main ideas from every lesson in Module ${i + 1}. Answer all four questions correctly to complete the module. You can retry as many times as you need; review the lesson notes and vocabulary if you miss a question.`,
+    ],
+    knowledgeCheck: moduleQuizzes[i],
+  }
+  const lessons = [...ordered, quiz].map((lesson) => ({
+    ...lesson,
+    completed: false,
+    attachments: [notes(moduleId, lesson.id)],
+  }))
   return { id: moduleId, title: `Module ${i + 1} · ${title}`, lessons }
 })
 

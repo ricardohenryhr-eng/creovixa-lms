@@ -89,6 +89,8 @@ export interface Lesson {
   terminology?: TermItem[]
   /** Short recap shown after the key terminology. */
   summary?: string
+  /** Scenario-based practice: a realistic encounter, the learner's task, and a model approach. */
+  scenario?: { situation: string; task: string; debrief: string }
   /** Inline knowledge check the learner must pass to complete the lesson. */
   knowledgeCheck?: KnowledgeQuestion[]
   /** Admin-authored training notes (lightweight rich text); replaces `content` when set. */

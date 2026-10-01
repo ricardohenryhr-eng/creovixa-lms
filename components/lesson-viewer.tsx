@@ -17,6 +17,9 @@ import {
   Headphones,
   ImageIcon,
   Paperclip,
+  MessagesSquare,
+  ClipboardCheck,
+  Circle,
 } from "lucide-react"
 import { RichText } from "@/components/rich-text"
 import { Card, Badge, Button } from "@/components/ui"
@@ -71,12 +74,14 @@ export function LessonViewer({
   }, [])
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [submitted, setSubmitted] = useState(false)
+  const [showDebrief, setShowDebrief] = useState(false)
 
   // Reset transient state whenever the selected lesson changes.
   useEffect(() => {
     setWatchedSet(new Set())
     setAnswers({})
     setSubmitted(false)
+    setShowDebrief(false)
   }, [lesson.id])
 
   const kcPassed = useMemo(() => {
@@ -231,6 +236,57 @@ export function LessonViewer({
             </ul>
           </section>
         ) : null}
+
+        {/* Scenario-based exercise */}
+        {lesson.scenario ? (
+          <section className="mt-6">
+            <SectionTitle icon={MessagesSquare}>Scenario exercise</SectionTitle>
+            <div className="mt-3 flex flex-col gap-3 rounded-lg border border-border p-4">
+              <p className="text-pretty text-sm leading-relaxed text-foreground/90">{lesson.scenario.situation}</p>
+              <p className="text-pretty text-sm font-medium leading-relaxed">Your task: {lesson.scenario.task}</p>
+              {showDebrief ? (
+                <p className="rounded-lg bg-muted/40 px-4 py-3 text-pretty text-sm leading-relaxed text-foreground/90">
+                  <span className="font-semibold">Model approach: </span>
+                  {lesson.scenario.debrief}
+                </p>
+              ) : (
+                <div>
+                  <Button variant="outline" onClick={() => setShowDebrief(true)}>
+                    Reveal model approach
+                  </Button>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
+
+        {/* Completion requirements */}
+        <section className="mt-6">
+          <SectionTitle icon={ClipboardCheck}>Completion requirements</SectionTitle>
+          <ul className="mt-3 flex flex-col gap-2">
+            {[
+              hasVideo && { label: `Watch at least ${requiredPercent}% of the lesson video`, met: watched },
+              (lesson.content?.length || lesson.body?.trim()) && { label: "Read the training notes and vocabulary", met: completed },
+              lesson.scenario && { label: "Work through the scenario exercise", met: completed || showDebrief },
+              hasKc && { label: "Answer every knowledge check question correctly (100%)", met: completed || (submitted && kcPassed) },
+              { label: "Select “Mark lesson complete”", met: completed },
+            ]
+              .filter((r): r is { label: string; met: boolean } => Boolean(r))
+              .map((r) => (
+                <li key={r.label} className="flex items-start gap-2.5 text-sm leading-relaxed">
+                  {r.met ? (
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                  ) : (
+                    <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  )}
+                  <span>
+                    {r.label}
+                    <span className="sr-only">{r.met ? " (done)" : " (not done)"}</span>
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </section>
 
         {/* Knowledge check (always last) */}
         {hasKc && (
