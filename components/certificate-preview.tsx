@@ -1,13 +1,12 @@
 "use client"
 
 import type { CSSProperties, ReactNode } from "react"
-import { Cinzel, Crimson_Pro } from "next/font/google"
+import { Crimson_Pro } from "next/font/google"
 import { QRCodeSVG } from "qrcode.react"
 import { formatDate } from "@/lib/utils"
 import type { Certificate } from "@/lib/data"
 import { DEFAULT_TEMPLATE, certificateDescription, isMedicalCertificate } from "@/lib/certificates"
 
-const cinzel = Cinzel({ subsets: ["latin"], weight: ["600", "700"], display: "swap" })
 const crimson = Crimson_Pro({ subsets: ["latin"], weight: ["400", "500", "700"], display: "swap" })
 
 // Colours sampled from the official template so printed values blend in.
@@ -69,10 +68,8 @@ function verificationUrl(certId: string) {
 
 export function CertificatePreview({ cert }: { cert: Certificate }) {
   const medical = isMedicalCertificate(cert)
-  const background = medical
-    ? cert.templateMedicalUrl ?? DEFAULT_TEMPLATE.medicalUrl
-    : cert.templateStandardUrl ?? DEFAULT_TEMPLATE.standardUrl
-  const courseLine = medical ? `Medical Interpreter Training · ${cert.hours ?? 40} Hours` : cert.courseTitle
+  const background = cert.templateStandardUrl ?? DEFAULT_TEMPLATE.standardUrl
+  const courseLine = medical ? `${cert.hours ?? 40}-Hour Medical Interpreter Training` : cert.courseTitle
   const values = { color: NAVY, fontSize: u(21.5), fontWeight: 500 }
 
   return (
@@ -91,26 +88,6 @@ export function CertificatePreview({ cert }: { cert: Certificate }) {
         className="absolute inset-0 h-full w-full select-none"
         draggable={false}
       />
-
-      {medical ? (
-        <>
-          <Field x={322} y={168} w={646} h={92} className={cinzel.className}>
-            <p
-              className="font-bold uppercase"
-              style={{ color: GOLD, fontSize: u(40), lineHeight: 1.08, letterSpacing: "0.03em", textShadow: "0 1px 0 #6b4a12" }}
-            >
-              40-Hour Medical
-              <br />
-              Interpreter
-            </p>
-          </Field>
-          <Field x={444} y={260} w={390} h={32} className={cinzel.className}>
-            <p className="font-semibold uppercase" style={{ color: NAVY, fontSize: u(21), letterSpacing: "0.16em" }}>
-              Training Certificate
-            </p>
-          </Field>
-        </>
-      ) : null}
 
       <Field x={338} y={352} w={609} h={106}>
         <p
