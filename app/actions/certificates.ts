@@ -11,7 +11,8 @@ import {
 import { orderedCourses, courseAssessment } from "@/lib/curriculum"
 import type { Certificate } from "@/lib/data"
 
-const COLUMNS = "id, cert_id, user_id, recipient, course_slug, course_title, score, hours, variant, issued_at, expires_at"
+const COLUMNS =
+  "id, cert_id, user_id, recipient, course_slug, course_title, score, hours, variant, issued_at, expires_at, template:certificate_templates(standard_url, medical_url)"
 
 export interface IssueCertificateInput {
   certId: string
@@ -61,8 +62,17 @@ export async function issueCertificate(input: IssueCertificateInput): Promise<{ 
 
   const medical = course.certPrefix === "MED"
 
+  // New certificates lock in the template that is active right now, so later
+  // template changes never alter certificates that were already issued.
+  const { data: activeTemplate } = await supabase
+    .from("certificate_templates")
+    .select("id")
+    .eq("is_active", true)
+    .maybeSingle<{ id: string }>()
+
   const { error } = await supabase.from("certificates").upsert(
     {
+      template_id: activeTemplate?.id ?? null,
       cert_id: input.certId,
       user_id: user.id,
       recipient,
@@ -102,7 +112,7 @@ export async function listMyCertificates(): Promise<Certificate[]> {
     console.log("[v0] listMyCertificates error:", error.message)
     return []
   }
-  return (data as CertificateRow[]).map(rowToCertificate)
+  return (data as unknown as CertificateRow[]).map(rowToCertificate)
 }
 
 /**
@@ -126,7 +136,7 @@ export async function listAllCertificates(): Promise<Certificate[]> {
     console.log("[v0] listAllCertificates error:", error.message)
     return []
   }
-  return (data as CertificateRow[]).map(rowToCertificate)
+  return (data as unknown as CertificateRow[]).map(rowToCertificate)
 }
 
 /**
@@ -146,5 +156,5 @@ export async function verifyCertificate(certId: string): Promise<Certificate | n
     return null
   }
   if (!data) return null
-  return rowToCertificate(data as CertificateRow)
+  return rowToCertificate(data as unknown as CertificateRow)
 }

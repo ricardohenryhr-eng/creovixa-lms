@@ -1,258 +1,170 @@
 "use client"
 
+import type { CSSProperties, ReactNode } from "react"
+import { Cinzel, Crimson_Pro } from "next/font/google"
 import { QRCodeSVG } from "qrcode.react"
-import { Signature } from "@/components/signature"
 import { formatDate } from "@/lib/utils"
 import type { Certificate } from "@/lib/data"
-import {
-  MEDICAL_PROGRAM_DESCRIPTION,
-  MEDICAL_PROGRAM_HOURS,
-  MEDICAL_PROGRAM_TITLE,
-  isMedicalCertificate,
-} from "@/lib/certificates"
+import { DEFAULT_TEMPLATE, certificateDescription, isMedicalCertificate } from "@/lib/certificates"
 
-const SIGNATORIES = [
-  { key: "ricardo", name: "Ricardo Henry", title: "Chief Executive Officer (CEO)" },
-  { key: "belson", name: "Belson Bugotte", title: "Training Director" },
-  { key: "anderson", name: "Anderson Verger", title: "Human Resources Manager (HR)" },
-] as const
+const cinzel = Cinzel({ subsets: ["latin"], weight: ["600", "700"], display: "swap" })
+const crimson = Crimson_Pro({ subsets: ["latin"], weight: ["400", "500", "700"], display: "swap" })
 
-// Official Creovixa palette for the printed certificate document. These exact
-// navy/gold values intentionally live here (not the app tokens) so the
-// certificate reproduces the branded template regardless of app theme.
-const NAVY = "#0f2a5e"
-const GOLD = "#c8a34a"
-const GOLD_DEEP = "#8a6516"
+// Colours sampled from the official template so printed values blend in.
+const NAVY = "#14214b"
+const GOLD = "#9c6d1d"
 
-/**
- * QR verification always points at the production verification route so a
- * scanned certificate resolves no matter where it was rendered or printed.
- */
-function verificationUrl(certId: string) {
-  return `https://lms.creovixa.com/verify/${encodeURIComponent(certId)}`
-}
+// Every position below is measured in pixels on the 1280x993 master template
+// and converted to percentages / container units, so the overlay lines up at
+// any rendered size (screen, print, or high-resolution PDF export).
+const BASE_W = 1280
+const BASE_H = 993
+const u = (px: number) => `${(px / BASE_W) * 100}cqw`
 
-/** Small gold diamond used as an ornamental divider. */
-function Diamond() {
-  return <span className="inline-block h-2 w-2 rotate-45" style={{ backgroundColor: GOLD }} aria-hidden="true" />
-}
-
-/** Gold wax-style seal with the Creovixa mark and circular lettering. */
-function Seal() {
+function Field({
+  x,
+  y,
+  w,
+  h,
+  align = "center",
+  children,
+  className = "",
+  style,
+}: {
+  x: number
+  y: number
+  w: number
+  h: number
+  align?: "center" | "start"
+  children: ReactNode
+  className?: string
+  style?: CSSProperties
+}) {
   return (
-    <div className="relative h-20 w-20 shrink-0 sm:h-24 sm:w-24">
-      <div
-        className="absolute inset-0 rounded-full shadow-md"
-        style={{ background: `radial-gradient(circle at 35% 30%, #f3d98b, ${GOLD} 55%, ${GOLD_DEEP})` }}
-      />
-      <div className="absolute inset-[6px] rounded-full border-2" style={{ borderColor: "#fdfbf4aa" }} />
-      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
-        <defs>
-          <path id="sealArc" d="M50,50 m-34,0 a34,34 0 1,1 68,0 a34,34 0 1,1 -68,0" />
-        </defs>
-        <text fill={NAVY} fontSize="9.5" fontWeight="700" letterSpacing="1.2">
-          <textPath href="#sealArc" startOffset="0%">
-            · CREOVIXA LANGUAGE SERVICES · EST. 2024
-          </textPath>
-        </text>
-      </svg>
-      <img
-        src="/creovixa-mark.png"
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 m-auto h-8 w-8 object-contain sm:h-9 sm:w-9"
-      />
+    <div
+      className={`absolute flex items-center ${align === "center" ? "justify-center text-center" : "justify-start"} ${className}`}
+      style={{
+        left: `${(x / BASE_W) * 100}%`,
+        top: `${(y / BASE_H) * 100}%`,
+        width: `${(w / BASE_W) * 100}%`,
+        height: `${(h / BASE_H) * 100}%`,
+        ...style,
+      }}
+    >
+      {children}
     </div>
   )
 }
 
+/** Shrink long values so they never overflow their slot on the template. */
+function fitSize(base: number, text: string, comfortableLength: number, min: number) {
+  if (text.length <= comfortableLength) return base
+  return Math.max(min, (base * comfortableLength) / text.length)
+}
+
+/** QR verification always points at production so printed copies resolve. */
+function verificationUrl(certId: string) {
+  return `https://lms.creovixa.com/verify/${encodeURIComponent(certId)}`
+}
+
 export function CertificatePreview({ cert }: { cert: Certificate }) {
-  const verifyUrl = verificationUrl(cert.certId)
   const medical = isMedicalCertificate(cert)
-  const title = medical ? MEDICAL_PROGRAM_TITLE : cert.courseTitle
-
-  const completedLine = medical
-    ? "has successfully completed the certification program"
-    : "has successfully completed the certification course"
-
-  const description = medical
-    ? MEDICAL_PROGRAM_DESCRIPTION
-    : "This certificate confirms the completion of training on professional ethics, confidentiality, cultural sensitivity, and best practices in language services."
-
-  const corners = [
-    "left-3 top-3 border-l-2 border-t-2",
-    "right-3 top-3 border-r-2 border-t-2",
-    "right-3 bottom-3 border-r-2 border-b-2",
-    "left-3 bottom-3 border-l-2 border-b-2",
-  ]
+  const background = medical
+    ? cert.templateMedicalUrl ?? DEFAULT_TEMPLATE.medicalUrl
+    : cert.templateStandardUrl ?? DEFAULT_TEMPLATE.standardUrl
+  const courseLine = medical ? `Medical Interpreter Training · ${cert.hours ?? 40} Hours` : cert.courseTitle
+  const values = { color: NAVY, fontSize: u(21.5), fontWeight: 500 }
 
   return (
-    <div data-cert-print className="mx-auto w-full">
-      {/* Outer navy frame → gold band → inner navy keyline → cream document */}
-      <div className="rounded-sm p-1.5 sm:p-2" style={{ backgroundColor: NAVY }}>
-        <div
-          className="p-[3px]"
-          style={{ background: `linear-gradient(135deg, #f3d98b, ${GOLD} 45%, ${GOLD_DEEP})` }}
+    <div
+      data-cert-print
+      className={`relative mx-auto w-full overflow-hidden ${crimson.className}`}
+      style={{ containerType: "inline-size", aspectRatio: `${BASE_W} / ${BASE_H}` }}
+      role="img"
+      aria-label={`Certificate ${cert.certId} awarded to ${cert.recipient} for ${medical ? "40-Hour Medical Interpreter Training" : cert.courseTitle}`}
+    >
+      <img
+        src={background || "/placeholder.svg"}
+        alt=""
+        aria-hidden="true"
+        crossOrigin="anonymous"
+        className="absolute inset-0 h-full w-full select-none"
+        draggable={false}
+      />
+
+      {medical ? (
+        <>
+          <Field x={322} y={168} w={646} h={92} className={cinzel.className}>
+            <p
+              className="font-bold uppercase"
+              style={{ color: GOLD, fontSize: u(40), lineHeight: 1.08, letterSpacing: "0.03em", textShadow: "0 1px 0 #6b4a12" }}
+            >
+              40-Hour Medical
+              <br />
+              Interpreter
+            </p>
+          </Field>
+          <Field x={444} y={260} w={390} h={32} className={cinzel.className}>
+            <p className="font-semibold uppercase" style={{ color: NAVY, fontSize: u(21), letterSpacing: "0.16em" }}>
+              Training Certificate
+            </p>
+          </Field>
+        </>
+      ) : null}
+
+      <Field x={338} y={352} w={609} h={106}>
+        <p
+          className="whitespace-nowrap font-script leading-none"
+          style={{ color: NAVY, fontSize: u(fitSize(78, cert.recipient, 16, 46)) }}
         >
-          <div className="p-[2px]" style={{ backgroundColor: NAVY }}>
-            <div className="relative overflow-hidden bg-[#fdfbf4] px-5 py-6 text-center sm:px-10 sm:py-9">
-              {/* Laurel + globe watermark, matching the official master template */}
-              <img
-                src="/certificate-watermark.png"
-                alt=""
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover opacity-50 mix-blend-multiply"
-              />
+          {cert.recipient}
+        </p>
+      </Field>
 
-              {/* Gold corner accents */}
-              {corners.map((c) => (
-                <span key={c} className={`pointer-events-none absolute z-10 h-7 w-7 ${c}`} style={{ borderColor: GOLD }} aria-hidden="true" />
-              ))}
+      <Field x={290} y={519} w={700} h={57}>
+        <p
+          className="whitespace-nowrap font-bold leading-none"
+          style={{ color: GOLD, fontSize: u(fitSize(50, courseLine, 22, 28)) }}
+        >
+          {courseLine}
+        </p>
+      </Field>
 
-              {/* All content sits above the watermark */}
-              <div className="relative z-10">
-              {/* Header: logo + service tagline */}
-              <div className="flex items-start justify-between gap-3 text-left">
-                <img
-                  src="/creovixa-logo-full.png"
-                  alt="Creovixa Language Services"
-                  className="h-9 w-auto sm:h-12"
-                />
-                <div className="text-right">
-                  <p className="text-[8px] font-semibold tracking-[0.12em] sm:text-[11px]" style={{ color: NAVY }}>
-                    INTERPRETATION&nbsp; | &nbsp;TRANSLATION&nbsp; | &nbsp;CULTURAL CONNECTIVITY
-                  </p>
-                  <p className="mt-1 font-script text-lg leading-none sm:text-2xl" style={{ color: GOLD_DEEP }}>
-                    A More Inclusive World.
-                  </p>
-                </div>
-              </div>
+      <Field x={699} y={582} w={110} h={33} align="start">
+        <p className="font-bold leading-none" style={{ color: NAVY, fontSize: u(31) }}>
+          {cert.score}%
+        </p>
+      </Field>
 
-              {/* Title */}
-              <h2
-                className="mt-5 font-display text-4xl font-extrabold uppercase leading-none tracking-[0.06em] text-transparent sm:mt-6 sm:text-6xl"
-                style={{
-                  backgroundImage: `linear-gradient(180deg, #f3d98b, ${GOLD} 45%, ${GOLD_DEEP})`,
-                  WebkitBackgroundClip: "text",
-                  backgroundClip: "text",
-                }}
-              >
-                Certificate
-              </h2>
-              <div className="mt-2 flex items-center justify-center gap-3">
-                <span className="h-px w-10 sm:w-16" style={{ backgroundColor: GOLD }} />
-                <p className="text-xs font-semibold tracking-[0.35em] sm:text-sm" style={{ color: NAVY }}>
-                  OF COMPLETION
-                </p>
-                <span className="h-px w-10 sm:w-16" style={{ backgroundColor: GOLD }} />
-              </div>
-              <div className="mt-2 flex justify-center">
-                <Diamond />
-              </div>
+      <Field x={292} y={619} w={700} h={53}>
+        <p className="text-balance" style={{ color: NAVY, fontSize: u(18.5), lineHeight: 1.35 }}>
+          {certificateDescription(cert)}
+        </p>
+      </Field>
 
-              {/* Recipient */}
-              <p className="mt-5 text-[10px] font-medium tracking-[0.3em] sm:text-xs" style={{ color: `${NAVY}b3` }}>
-                THIS CERTIFIES THAT
-              </p>
-              <p className="mt-1 font-script text-4xl leading-tight sm:text-6xl" style={{ color: NAVY }}>
-                {cert.recipient}
-              </p>
-              <div className="mt-2 flex items-center justify-center gap-2">
-                <span className="h-px w-24 sm:w-36" style={{ backgroundColor: GOLD }} />
-                <Diamond />
-                <span className="h-px w-24 sm:w-36" style={{ backgroundColor: GOLD }} />
-              </div>
+      <Field x={274} y={718} w={198} h={32}>
+        <p style={values}>{formatDate(cert.issuedAt)}</p>
+      </Field>
+      <Field x={562} y={718} w={204} h={32}>
+        <p style={values}>{cert.expiresAt ? formatDate(cert.expiresAt) : "No Expiration"}</p>
+      </Field>
+      <Field x={846} y={718} w={214} h={32}>
+        <p className="whitespace-nowrap" style={{ ...values, fontSize: u(fitSize(21.5, cert.certId, 18, 15)) }}>
+          {cert.certId}
+        </p>
+      </Field>
 
-              {/* Course / program */}
-              <p className="mt-4 text-xs sm:text-sm" style={{ color: `${NAVY}cc` }}>
-                {completedLine}
-              </p>
-              <p className="mt-1.5 font-display text-2xl font-bold sm:text-3xl" style={{ color: GOLD_DEEP }}>
-                {title}
-              </p>
-
-              {medical ? (
-                <p
-                  className="mx-auto mt-3 inline-block rounded-sm border px-4 py-1.5 text-sm font-bold uppercase tracking-[0.18em] sm:text-base"
-                  style={{ color: NAVY, borderColor: GOLD, backgroundColor: "#f7ecd0" }}
-                >
-                  Training Hours Completed: {MEDICAL_PROGRAM_HOURS} Hours
-                </p>
-              ) : null}
-
-              <p className="mt-1.5 text-xs sm:text-sm" style={{ color: `${NAVY}cc` }}>
-                with a final score of <span className="font-bold" style={{ color: NAVY }}>{cert.score}%</span>
-              </p>
-
-              {/* Description */}
-              <p className="mx-auto mt-3 max-w-xl text-pretty text-[11px] italic leading-relaxed sm:text-xs" style={{ color: `${NAVY}b3` }}>
-                {description}
-              </p>
-
-              {/* Meta row */}
-              <div className="mx-auto mt-5 grid max-w-2xl grid-cols-3">
-                <div className="px-2">
-                  <p className="text-[8px] font-semibold uppercase tracking-[0.18em] sm:text-[10px]" style={{ color: `${NAVY}99` }}>
-                    Date of Completion
-                  </p>
-                  <p className="mt-1 text-xs font-semibold sm:text-sm" style={{ color: NAVY }}>{formatDate(cert.issuedAt)}</p>
-                </div>
-                <div className="border-x px-2" style={{ borderColor: `${GOLD}80` }}>
-                  <p className="text-[8px] font-semibold uppercase tracking-[0.18em] sm:text-[10px]" style={{ color: `${NAVY}99` }}>
-                    Valid Until
-                  </p>
-                  <p className="mt-1 text-xs font-semibold sm:text-sm" style={{ color: NAVY }}>
-                    {cert.expiresAt ? formatDate(cert.expiresAt) : "No Expiration"}
-                  </p>
-                </div>
-                <div className="px-2">
-                  <p className="text-[8px] font-semibold uppercase tracking-[0.18em] sm:text-[10px]" style={{ color: `${NAVY}99` }}>
-                    Certificate No.
-                  </p>
-                  <p className="mt-1 font-mono text-xs font-semibold sm:text-sm" style={{ color: NAVY }}>{cert.certId}</p>
-                </div>
-              </div>
-
-              {/* Seal · signatures · QR */}
-              <div className="mt-6 flex items-end justify-between gap-3">
-                <Seal />
-
-                <div className="grid flex-1 grid-cols-3 gap-2 sm:gap-4">
-                  {SIGNATORIES.map((s) => (
-                    <div key={s.key} className="flex flex-col items-center text-center">
-                      <Signature nameKey={s.key} className="h-7 w-full sm:h-9" style={{ color: NAVY }} />
-                      <span className="mt-1 h-px w-full" style={{ backgroundColor: `${NAVY}66` }} />
-                      <span className="mt-1 text-[9px] font-bold leading-tight sm:text-[11px]" style={{ color: NAVY }}>
-                        {s.name}
-                      </span>
-                      <span className="text-[7px] leading-tight sm:text-[9px]" style={{ color: `${NAVY}99` }}>
-                        {s.title}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex shrink-0 flex-col items-center">
-                  <span className="rounded border bg-white p-1" style={{ borderColor: GOLD }}>
-                    <QRCodeSVG value={verifyUrl} size={60} level="M" fgColor={NAVY} />
-                  </span>
-                  <span className="mt-1 text-[7px] font-semibold tracking-[0.2em] sm:text-[8px]" style={{ color: `${NAVY}b3` }}>
-                    SCAN TO VERIFY
-                  </span>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="mt-5 border-t pt-3" style={{ borderColor: `${GOLD}66` }}>
-                <p className="text-[9px] font-semibold tracking-[0.3em] sm:text-[11px]" style={{ color: GOLD_DEEP }}>
-                  PEOPLE&nbsp; | &nbsp;COMMUNICATION&nbsp; | &nbsp;OPPORTUNITY
-                </p>
-              </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Field x={1057} y={785} w={102} h={102}>
+        <QRCodeSVG
+          value={verificationUrl(cert.certId)}
+          level="M"
+          fgColor={NAVY}
+          bgColor="#ffffff"
+          marginSize={1}
+          className="h-full w-full"
+          title={`Verify certificate ${cert.certId}`}
+        />
+      </Field>
     </div>
   )
 }

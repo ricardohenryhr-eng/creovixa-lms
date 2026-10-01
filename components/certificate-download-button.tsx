@@ -4,7 +4,8 @@ import { useState, type RefObject } from "react"
 import { Download, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui"
 
-const PIXEL_RATIO = 4
+const PIXEL_RATIO = 2
+const TARGET_EXPORT_WIDTH = 3840
 const PAGE_WIDTH_PT = 792 // 11in landscape page width
 
 export function CertificateDownloadButton({
@@ -26,7 +27,9 @@ export function CertificateDownloadButton({
       const [{ toPng }, { jsPDF }] = await Promise.all([import("html-to-image"), import("jspdf")])
       const width = node.offsetWidth
       const height = node.offsetHeight
-      const png = await toPng(node, { pixelRatio: PIXEL_RATIO, cacheBust: true, backgroundColor: "#fdfbf4" })
+      // Export at a fixed ~3840px wide regardless of on-screen size.
+      const pixelRatio = Math.max(PIXEL_RATIO, TARGET_EXPORT_WIDTH / width)
+      const png = await toPng(node, { pixelRatio, cacheBust: true, backgroundColor: "#fdfbf4" })
 
       const pageHeight = (PAGE_WIDTH_PT * height) / width
       const pdf = new jsPDF({

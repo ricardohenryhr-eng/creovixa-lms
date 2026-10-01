@@ -198,6 +198,11 @@ export interface Certificate {
   variant?: "standard" | "medical"
   /** Training hours completed, shown on the flagship medical certificate. */
   hours?: number
+  /** Course slug, used to pick the course-specific description. */
+  courseSlug?: string
+  /** Background images of the template this certificate was issued on. */
+  templateStandardUrl?: string
+  templateMedicalUrl?: string
 }
 
 export const roleLabels: Record<Role, string> = {

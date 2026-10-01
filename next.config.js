@@ -8,6 +8,8 @@ const nextConfig = {
     // navigation as a DOM Event that serializes to `{"isTrusted":true}`. Disabling
     // this devtool removes the faulty injection without affecting the app.
     devtoolSegmentExplorer: false,
+    // Certificate template uploads (validated to 4 MB in the action).
+    serverActions: { bodySizeLimit: "5mb" },
   },
 }
 
