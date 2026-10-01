@@ -127,7 +127,7 @@ export const extraLessons: ExtraLessonSpec[] = [
     title: "Physiology in practice: vital signs, homeostasis, and lab results",
     duration: "50 min",
     type: "reading",
-    images: [{ url: "/images/medical/m9-anatomy.png", caption: "Body systems work together to keep internal conditions in balance (homeostasis)." }],
+    images: [{ url: "/images/medical/m5-vitals-labs.png", caption: "Vital signs and lab results show whether the body is keeping internal conditions in balance (homeostasis)." }],
     objectives: [
       "Explain homeostasis and how body systems interact",
       "Interpret conversations about vital signs and their normal ranges",
@@ -164,7 +164,7 @@ export const extraLessons: ExtraLessonSpec[] = [
     title: "Patient registration and intake",
     duration: "40 min",
     type: "reading",
-    images: [{ url: "/images/medical/m6-healthcare-systems.png", caption: "Registration is often the patient's first contact with the care team." }],
+    images: [{ url: "/images/medical/m7-registration-intake.png", caption: "Registration is often the patient's first contact with the care team." }],
     objectives: [
       "Interpret registration, insurance, and demographic questions accurately",
       "Handle names, dates, and identifiers without error",
@@ -200,7 +200,7 @@ export const extraLessons: ExtraLessonSpec[] = [
     title: "Informed consent",
     duration: "45 min",
     type: "reading",
-    images: [{ url: "/images/medical/m8-surgery-periop.png", caption: "Consent is a conversation led by the provider, not a form handed to the patient." }],
+    images: [{ url: "/images/medical/m7-informed-consent.png", caption: "Consent is a conversation led by the provider, not a form handed to the patient." }],
     objectives: [
       "Describe the elements of valid informed consent",
       "Explain the interpreter's role in the consent conversation",
