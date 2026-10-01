@@ -73,6 +73,10 @@ export interface Lesson {
   completed: boolean
   /** Optional streaming video URL rendered in the lesson's video player. */
   videoUrl?: string
+  /** Additional YouTube videos shown after the main video, in order. */
+  extraVideos?: string[]
+  /** Percentage of each video a learner must watch (default 80). */
+  requiredPercent?: number
   /** Full lesson transcript shown beneath the video player. */
   transcript?: string
   /** Optional audio practice/interpreting-drill track for this lesson. */

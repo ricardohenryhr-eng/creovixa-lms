@@ -19,11 +19,27 @@ const notes = (moduleId: string, lessonId: string) => ({
   url: `/api/lesson-notes/${MEDICAL_SLUG}/${moduleId}-${lessonId}`,
 })
 
-type LessonSpec = Omit<Lesson, "completed" | "attachments"> & { moduleTitle: string }
+const M = [
+  "Introduction to Medical Interpreting",
+  "Interpreter Ethics",
+  "Standards of Practice",
+  "Medical Terminology",
+  "Human Anatomy and Physiology",
+  "Healthcare Systems",
+  "Patient Interviews",
+  "Medical Specialties",
+  "Cultural Competency",
+  "HIPAA and Confidentiality",
+  "Consecutive Interpreting Skills",
+  "Sight Translation",
+  "Medical Interpreter Final Preparation",
+] as const
+
+type LessonSpec = Omit<Lesson, "completed" | "attachments"> & { moduleTitle: (typeof M)[number] }
 
 const specs: LessonSpec[] = [
   {
-    moduleTitle: "Module 1 · Introduction to Healthcare Interpreting",
+    moduleTitle: M[0],
     id: "l1",
     title: "Why professional medical interpreters matter",
     duration: "11:18",
@@ -53,7 +69,7 @@ const specs: LessonSpec[] = [
     ],
   },
   {
-    moduleTitle: "Module 2 · Role of the Medical Interpreter",
+    moduleTitle: M[0],
     id: "l2",
     title: "The interpreter's role in the clinical team",
     duration: "18:51",
@@ -83,7 +99,7 @@ const specs: LessonSpec[] = [
     ],
   },
   {
-    moduleTitle: "Module 3 · Code of Ethics",
+    moduleTitle: M[1],
     id: "l3",
     title: "The NCIHC national code of ethics",
     duration: "20:49",
@@ -113,7 +129,7 @@ const specs: LessonSpec[] = [
     ],
   },
   {
-    moduleTitle: "Module 4 · Standards of Practice",
+    moduleTitle: M[2],
     id: "l4",
     title: "National standards of practice for healthcare interpreters",
     duration: "11:52",
@@ -143,7 +159,7 @@ const specs: LessonSpec[] = [
     ],
   },
   {
-    moduleTitle: "Module 5 · HIPAA, Privacy & Code of Conduct",
+    moduleTitle: M[9],
     id: "l5",
     title: "Protecting patient information and professional conduct",
     duration: "35:00",
@@ -173,7 +189,7 @@ const specs: LessonSpec[] = [
     ],
   },
   {
-    moduleTitle: "Module 6 · Modes of Interpreting",
+    moduleTitle: M[10],
     id: "l6",
     title: "Consecutive, simultaneous, and sight translation",
     duration: "6:31",
@@ -203,7 +219,7 @@ const specs: LessonSpec[] = [
     ],
   },
   {
-    moduleTitle: "Module 7 · Managing the Encounter",
+    moduleTitle: M[6],
     id: "l7",
     title: "Positioning, flow control, and interventions",
     duration: "5:32",
@@ -233,7 +249,7 @@ const specs: LessonSpec[] = [
     ],
   },
   {
-    moduleTitle: "Module 8 · Medical Terminology",
+    moduleTitle: M[3],
     id: "l8",
     title: "Building medical vocabulary from word parts",
     duration: "4:48",
@@ -263,7 +279,7 @@ const specs: LessonSpec[] = [
     ],
   },
   {
-    moduleTitle: "Module 9 · Anatomy & Body Systems",
+    moduleTitle: M[4],
     id: "l9",
     title: "Overview of the human body systems",
     duration: "9:47",
@@ -293,7 +309,7 @@ const specs: LessonSpec[] = [
     ],
   },
   {
-    moduleTitle: "Module 10 · Cultural Competence",
+    moduleTitle: M[8],
     id: "l10",
     title: "Culture, health beliefs, and the interpreter",
     duration: "9:29",
@@ -323,7 +339,7 @@ const specs: LessonSpec[] = [
     ],
   },
   {
-    moduleTitle: "Module 11 · Specialty Settings",
+    moduleTitle: M[7],
     id: "l11",
     title: "Emergency, mental health, oncology, and pediatrics",
     duration: "7:31",
@@ -353,7 +369,7 @@ const specs: LessonSpec[] = [
     ],
   },
   {
-    moduleTitle: "Module 12 · Remote Interpreting: OPI & VRI",
+    moduleTitle: M[12],
     id: "l12",
     title: "Over-the-phone and video remote interpreting",
     duration: "35:00",
@@ -382,7 +398,7 @@ const specs: LessonSpec[] = [
     ],
   },
   {
-    moduleTitle: "Module 13 · Professional Development & Final Practicum",
+    moduleTitle: M[12],
     id: "l13",
     title: "Certification pathways and your interpreting career",
     duration: "9:14",
@@ -411,15 +427,77 @@ const specs: LessonSpec[] = [
       { id: "k2", question: "What score is required to pass this program's final assessment?", options: ["60%", "70%", "80%", "100%"], answer: 2 },
     ],
   },
+  {
+    moduleTitle: M[5],
+    id: "l14",
+    title: "How the U.S. healthcare system is organized",
+    duration: "Reading",
+    type: "reading",
+    images: [{ url: "/images/medical/m6-healthcare-systems.png", caption: "Registration and insurance are often a patient's first contact with the healthcare system." }],
+    objectives: [
+      "Describe the levels of care from primary care to tertiary and long-term care",
+      "Explain the main payers: private insurance, Medicare, Medicaid, and self-pay",
+      "Identify the roles of the care team an interpreter works alongside",
+    ],
+    content: [
+      "Interpreters move through the whole healthcare system with their patients, so they need a working map of it. Primary care (family medicine, internal medicine, pediatrics) is the patient's usual first point of contact and coordinates ongoing care. Secondary care is delivered by specialists, usually after a referral. Tertiary care covers highly specialized services such as transplant centers, trauma units, and cancer centers. Long-term and post-acute care includes rehabilitation facilities, skilled nursing, home health, and hospice.",
+      "Care settings differ in pace and register. Outpatient clinics schedule visits and follow predictable routines; emergency departments triage by severity, not arrival time; inpatient units involve rounds, multiple providers, and discharge planning. Knowing the workflow of each setting helps the interpreter anticipate what will be said and prepare terminology.",
+      "Payment shapes much of what patients experience. Private insurance is typically employer-sponsored or purchased on the marketplace. Medicare is the federal program for people 65 and older and some people with disabilities. Medicaid is a joint federal-state program for people with low income; CHIP covers children. Patients may also be uninsured or self-pay. Terms like premium, deductible, copay, coinsurance, prior authorization, and explanation of benefits (EOB) come up constantly during registration and billing encounters.",
+      "The care team includes physicians (MD/DO), nurse practitioners and physician assistants, registered and licensed practical nurses, medical assistants, pharmacists, therapists, social workers, case managers, and patient financial counselors. The interpreter does not explain the system to the patient on their own initiative, but understanding it lets them render information accurately and recognize when a cultural or systemic misunderstanding may need to be flagged to the provider.",
+    ],
+    terminology: [
+      { term: "Primary care provider (PCP)", definition: "The clinician who provides first-contact, continuing, and coordinated care." },
+      { term: "Referral", definition: "A request from one provider for a patient to see another provider, often a specialist." },
+      { term: "Deductible", definition: "The amount a patient pays for covered services before insurance begins to pay." },
+      { term: "Prior authorization", definition: "Insurer approval required before certain services or medications are covered." },
+      { term: "Triage", definition: "Sorting patients by the urgency of their condition." },
+    ],
+    knowledgeCheck: [
+      { id: "k1", question: "Which program primarily covers people aged 65 and older?", options: ["Medicaid", "Medicare", "CHIP", "Marketplace plans"], answer: 1 },
+      { id: "k2", question: "In the emergency department, patients are seen according to:", options: ["Arrival time", "Insurance type", "Severity of condition", "Preferred language"], answer: 2 },
+    ],
+  },
+  {
+    moduleTitle: M[11],
+    id: "l15",
+    title: "Sight translation of medical documents",
+    duration: "Reading",
+    type: "reading",
+    images: [{ url: "/images/medical/m12-sight-translation.png", caption: "Sight translating a consent form aloud for a patient." }],
+    objectives: [
+      "Define sight translation and when it is appropriate in healthcare",
+      "Apply a preview, render, and check technique",
+      "Recognize documents and situations where sight translation should be declined or escalated",
+    ],
+    content: [
+      "Sight translation is the oral rendering of a written document from one language into another, such as reading an English consent form aloud in the patient's language. It is common for short documents: discharge instructions, medication labels, intake questionnaires, appointment letters, and consent forms explained during the encounter.",
+      "Use a three-step technique. Preview: scan the whole document first for its purpose, structure, unfamiliar terms, numbers, and dates. Render: read it aloud at a steady pace, keeping the register and meaning of the original without summarizing, adding, or omitting. Check: confirm numbers, dosages, and dates, and tell the provider if anything is unclear rather than guessing.",
+      "Sight translation does not replace written translation. Long or legally significant documents (full consent packets, advance directives, research consents) should be professionally translated in writing. Most standards also say the provider, not the interpreter, explains the document's meaning; the interpreter renders the text and interprets the provider's explanation and the patient's questions.",
+      "Protect accuracy and role boundaries. Do not sight translate a document you have not been able to preview, and do not sign as a witness to the patient's understanding unless your organization's policy explicitly allows it. If the patient cannot read, sight translation is a reasonable accommodation; note it according to policy.",
+    ],
+    terminology: [
+      { term: "Sight translation", definition: "Oral rendering of a written text in another language." },
+      { term: "Source document", definition: "The original written text being rendered." },
+      { term: "Register", definition: "The level of formality and style of language." },
+      { term: "Written translation", definition: "A full written rendering of a document by a qualified translator." },
+    ],
+    knowledgeCheck: [
+      { id: "k1", question: "What is the first step before sight translating a document?", options: ["Summarize it", "Preview the whole document", "Ask the patient to sign", "Translate only the headings"], answer: 1 },
+      { id: "k2", question: "Who explains the meaning of a consent form to the patient?", options: ["The interpreter", "The patient's family", "The provider", "The registrar"], answer: 2 },
+    ],
+  },
 ]
 
-const modules: Module[] = specs.map(({ moduleTitle, ...lesson }, i) => {
+const modules: Module[] = M.map((title, i) => {
   const moduleId = `m${i + 1}`
-  return {
-    id: moduleId,
-    title: moduleTitle,
-    lessons: [{ ...lesson, completed: false, attachments: [notes(moduleId, lesson.id)] }],
-  }
+  const lessons = specs
+    .filter((s) => s.moduleTitle === title)
+    .map(({ moduleTitle: _moduleTitle, ...lesson }) => ({
+      ...lesson,
+      completed: false,
+      attachments: [notes(moduleId, lesson.id)],
+    }))
+  return { id: moduleId, title: `Module ${i + 1} · ${title}`, lessons }
 })
 
 /** YouTube URL for every medical video lesson, keyed by `module::lesson`. */

@@ -97,6 +97,8 @@ export default function CourseDetailPage() {
           return {
             ...base,
             videoUrl: videoFree ? undefined : (v.videoUrl ?? base.videoUrl),
+            extraVideos: videoFree ? undefined : v.extraVideos?.length ? v.extraVideos : base.extraVideos,
+            requiredPercent: v.requiredPercent ?? base.requiredPercent,
             transcript: v.transcript ?? base.transcript,
             audioUrl: v.audioUrl ?? base.audioUrl,
             duration: formatDuration(v.durationSeconds) ?? base.duration,
@@ -211,8 +213,9 @@ export default function CourseDetailPage() {
           {currentLesson && (
             <LessonViewer
               key={currentLesson.id}
-              lesson={currentLesson}
-              viewer={viewer}
+                  lesson={currentLesson}
+                  courseSlug={course.slug}
+                  viewer={viewer}
               completed={completedSet.has(currentLesson.id)}
               onComplete={() => markComplete(currentLesson.id)}
               index={currentIndex}

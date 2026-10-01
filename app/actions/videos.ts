@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import { parseVideoSource } from "@/lib/video"
+import { canonicalYouTubeUrl, normalizeRequiredPercent } from "@/lib/video"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { KnowledgeQuestion, TermItem } from "@/lib/data"
 import {
@@ -85,9 +85,10 @@ export async function upsertLessonVideo(input: {
   const lessonId = input.lessonId?.trim()
   if (!courseSlug || !lessonId) return { ok: false, error: "Missing course or lesson." }
 
-  const videoUrl = input.videoUrl?.trim() || null
-  if (videoUrl && parseVideoSource(videoUrl).kind === "none") {
-    return { ok: false, error: "That video URL is not a supported MP4, Supabase, YouTube, or Vimeo link." }
+  const rawVideo = input.videoUrl?.trim() || ""
+  const videoUrl = rawVideo ? canonicalYouTubeUrl(rawVideo) : null
+  if (rawVideo && !videoUrl) {
+    return { ok: false, error: "Lesson videos must be YouTube links (youtube.com/watch?v=… or youtu.be/…)." }
   }
 
   const audioUrl = input.audioUrl?.trim() || null
@@ -133,6 +134,8 @@ export async function saveLessonContent(input: {
   courseSlug: string
   lessonKey: string
   videoUrl: string
+  extraVideos?: string[]
+  requiredPercent?: number
   body: string
   images: LessonImage[]
   vocabulary: TermItem[]
@@ -148,14 +151,24 @@ export async function saveLessonContent(input: {
   const lessonKey = input.lessonKey?.trim()
   if (!courseSlug || !lessonKey || !lessonKey.includes("::")) return { ok: false, error: "Missing course or lesson." }
 
-  let videoUrl = input.videoUrl?.trim() || null
-  if (isVideoFreeCourse(courseSlug)) videoUrl = null
-  if (videoUrl) {
-    const kind = parseVideoSource(videoUrl).kind
-    if (kind !== "youtube" && kind !== "vimeo" && kind !== "supabase" && !/\.(mp4|webm)(\?.*)?$/i.test(videoUrl)) {
-      return { ok: false, error: "Paste a full YouTube link, e.g. https://www.youtube.com/watch?v=… or https://youtu.be/…" }
+  const rawVideo = isVideoFreeCourse(courseSlug) ? "" : input.videoUrl?.trim() || ""
+  const videoUrl = rawVideo ? canonicalYouTubeUrl(rawVideo) : null
+  if (rawVideo && !videoUrl) {
+    return { ok: false, error: "Paste a full YouTube link, e.g. https://www.youtube.com/watch?v=… or https://youtu.be/…" }
+  }
+
+  const extraVideos: string[] = []
+  if (!isVideoFreeCourse(courseSlug)) {
+    for (const [i, raw] of (input.extraVideos ?? []).slice(0, 10).entries()) {
+      const trimmed = (raw ?? "").trim()
+      if (!trimmed) continue
+      const url = canonicalYouTubeUrl(trimmed)
+      if (!url) return { ok: false, error: `Additional video ${i + 1} is not a valid YouTube link.` }
+      extraVideos.push(url)
     }
   }
+  if (extraVideos.length && !videoUrl) return { ok: false, error: "Add a main video before additional videos." }
+  const requiredPercent = normalizeRequiredPercent(input.requiredPercent)
 
   const body = (input.body ?? "").trim().slice(0, MAX_TEXT) || null
 
@@ -205,7 +218,9 @@ export async function saveLessonContent(input: {
       course_slug: courseSlug,
       lesson_id: lessonKey,
       video_url: videoUrl,
-      provider: videoUrl ? parseVideoSource(videoUrl).kind : null,
+      provider: videoUrl ? "youtube" : null,
+      extra_videos: extraVideos,
+      required_percent: requiredPercent,
       body,
       images,
       vocabulary,
@@ -251,34 +266,6 @@ export async function uploadLessonAsset(formData: FormData): Promise<ActionResul
 
   const { data } = admin.storage.from("lesson-media").getPublicUrl(path)
   return { ok: true, url: data.publicUrl, name: file.name.replace(/\.[^.]+$/, "") }
-}
-
-const VIDEO_TYPES = new Set(["video/mp4", "video/webm"])
-const MAX_VIDEO = 50 * 1024 * 1024
-
-/**
- * Lesson videos are too large to pass through a server action, so this issues
- * a one-time signed upload URL and the browser uploads straight to Storage.
- */
-export async function createLessonVideoUpload(input: {
-  courseSlug: string
-  fileType: string
-  fileSize: number
-}): Promise<ActionResult & { path?: string; token?: string; publicUrl?: string }> {
-  const guard = await requireAdmin()
-  if ("error" in guard) return { ok: false, error: guard.error }
-  const courseSlug = (input.courseSlug ?? "").replace(/[^a-z0-9-]/gi, "")
-  if (!courseSlug) return { ok: false, error: "Missing course." }
-  if (isVideoFreeCourse(courseSlug)) return { ok: false, error: "This course does not use video." }
-  if (!VIDEO_TYPES.has(input.fileType)) return { ok: false, error: "Videos must be MP4 or WebM files." }
-  if (!(input.fileSize > 0) || input.fileSize > MAX_VIDEO) return { ok: false, error: "Videos must be 50 MB or smaller." }
-
-  const path = `${courseSlug}/videos/${crypto.randomUUID()}.${input.fileType === "video/webm" ? "webm" : "mp4"}`
-  const admin = createAdminClient()
-  const { data, error } = await admin.storage.from("lesson-media").createSignedUploadUrl(path)
-  if (error || !data) return { ok: false, error: error?.message ?? "Could not start the upload." }
-  const { data: pub } = admin.storage.from("lesson-media").getPublicUrl(path)
-  return { ok: true, path: data.path, token: data.token, publicUrl: pub.publicUrl }
 }
 
 /** Publish or unpublish an edited lesson without changing its content. */
