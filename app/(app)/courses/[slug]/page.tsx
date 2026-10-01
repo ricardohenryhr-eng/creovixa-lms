@@ -211,8 +211,9 @@ export default function CourseDetailPage() {
           {currentLesson && (
             <LessonViewer
               key={currentLesson.id}
-              lesson={currentLesson}
-              viewer={viewer}
+                  lesson={currentLesson}
+                  courseSlug={course.slug}
+                  viewer={viewer}
               completed={completedSet.has(currentLesson.id)}
               onComplete={() => markComplete(currentLesson.id)}
               index={currentIndex}

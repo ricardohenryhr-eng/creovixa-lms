@@ -31,6 +31,7 @@ import { PageHeader, Card, Badge, Button, Input } from "@/components/ui"
 import { RichText } from "@/components/rich-text"
 import { courses, type KnowledgeQuestion, type Lesson, type TermItem } from "@/lib/data"
 import { parseVideoSource } from "@/lib/video"
+import { YouTubePlayer } from "@/components/youtube-player"
 import {
   isVideoFreeCourse,
   lessonKey,
@@ -40,7 +41,6 @@ import {
   type LessonStatus,
 } from "@/lib/lesson-content"
 import {
-  createLessonVideoUpload,
   deleteLessonVideo,
   listLessonContent,
   listLessonOrder,
@@ -49,7 +49,6 @@ import {
   setLessonStatus,
   uploadLessonAsset,
 } from "@/app/actions/videos"
-import { createClient } from "@/lib/supabase/client"
 import { applyLessonOrder } from "@/lib/lesson-content"
 import { cn } from "@/lib/utils"
 
@@ -187,8 +186,8 @@ function LessonEditor({
   const [pending, startTransition] = useTransition()
   const bodyRef = useRef<HTMLTextAreaElement>(null)
 
-  const videoKind = parseVideoSource(videoUrl || null).kind
-  const videoInvalid = Boolean(videoUrl.trim()) && videoKind === "none"
+  const previewId = parseVideoSource(videoUrl || null).videoId
+  const videoInvalid = Boolean(videoUrl.trim()) && !previewId
 
   function save(status: LessonStatus) {
     setMessage(null)
@@ -304,49 +303,37 @@ function LessonEditor({
           </p>
         ) : (
           <div className="flex flex-col gap-3">
-            <Input
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=…"
-              aria-label="YouTube video URL"
-              aria-invalid={videoInvalid}
-            />
+            <div className="flex gap-2">
+              <Input
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=…"
+                aria-label="YouTube video URL"
+                aria-invalid={videoInvalid}
+              />
+              {videoUrl.trim() ? (
+                <Button variant="outline" onClick={() => setVideoUrl("")} aria-label="Remove video">
+                  <Trash2 className="h-4 w-4" /> Remove
+                </Button>
+              ) : null}
+            </div>
             {videoInvalid ? (
               <p className="text-xs text-destructive">
-                {"That link isn't recognised. Paste a full YouTube link (youtube.com/watch?v=… or youtu.be/…)."}
+                {"Only YouTube videos are supported. Paste a full YouTube link (youtube.com/watch?v=… or youtu.be/…)."}
               </p>
-            ) : videoKind === "youtube" || videoKind === "vimeo" ? (
-              <div className="aspect-video overflow-hidden rounded-lg border border-border bg-muted">
-                <iframe
-                  src={parseVideoSource(videoUrl).embedUrl}
-                  title="Video preview"
-                  className="h-full w-full"
-                  allow="encrypted-media; picture-in-picture"
-                  allowFullScreen
-                />
+            ) : previewId ? (
+              <div className="flex flex-col gap-1.5">
+                <YouTubePlayer key={previewId} videoId={previewId} title={lesson.title} />
+                <p className="text-xs text-muted-foreground">
+                  Preview of the learner player. Learners watch inside the lesson and must reach the required watch
+                  percentage to continue. Save, then publish to make changes live.
+                </p>
               </div>
-            ) : videoUrl.trim() ? (
-              <video
-                src={videoUrl}
-                controls
-                preload="metadata"
-                className="aspect-video w-full rounded-lg border border-border bg-muted"
-              >
-                <track kind="captions" />
-              </video>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Paste a YouTube link or upload an MP4. It plays at the top of the lesson.
+                Paste a YouTube link. It is embedded at the top of the lesson; only the link is stored.
               </p>
             )}
-            <VideoUploadButton
-              courseSlug={courseSlug}
-              onUploaded={(url) => {
-                setVideoUrl(url)
-                setMessage({ ok: true, text: "Video uploaded. Preview it above, then publish." })
-              }}
-              onError={(text) => setMessage({ ok: false, text })}
-            />
           </div>
         )}
       </EditorSection>
@@ -737,58 +724,6 @@ function LessonOrderPanel({
         ))}
       </div>
     </Card>
-  )
-}
-
-function VideoUploadButton({
-  courseSlug,
-  onUploaded,
-  onError,
-}: {
-  courseSlug: string
-  onUploaded: (url: string) => void
-  onError: (text: string) => void
-}) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
-
-  async function handle(file: File) {
-    setUploading(true)
-    try {
-      const ticket = await createLessonVideoUpload({ courseSlug, fileType: file.type, fileSize: file.size })
-      if (!ticket.ok || !ticket.path || !ticket.token || !ticket.publicUrl) {
-        onError(ticket.error ?? "Upload failed.")
-        return
-      }
-      const { error } = await createClient()
-        .storage.from("lesson-media")
-        .uploadToSignedUrl(ticket.path, ticket.token, file, { contentType: file.type })
-      if (error) onError(error.message)
-      else onUploaded(ticket.publicUrl)
-    } finally {
-      setUploading(false)
-      if (inputRef.current) inputRef.current.value = ""
-    }
-  }
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <input
-        ref={inputRef}
-        type="file"
-        accept="video/mp4,video/webm"
-        className="sr-only"
-        aria-label="Upload MP4 video"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file) void handle(file)
-        }}
-      />
-      <Button variant="outline" size="sm" disabled={uploading} onClick={() => inputRef.current?.click()}>
-        <Upload className="h-4 w-4" /> {uploading ? "Uploading video…" : "Upload MP4"}
-      </Button>
-      <span className="text-xs text-muted-foreground">MP4 or WebM, up to 50 MB.</span>
-    </div>
   )
 }
 

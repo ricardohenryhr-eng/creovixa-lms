@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import useSWR from "swr"
 import {
   PlayCircle,
   Target,
@@ -9,7 +10,6 @@ import {
   GraduationCap,
   CheckCircle2,
   XCircle,
-  ShieldCheck,
   Lock,
   Video,
   Clock,
@@ -20,20 +20,22 @@ import {
 } from "lucide-react"
 import { RichText } from "@/components/rich-text"
 import { Card, Badge, Button } from "@/components/ui"
-import { Watermark } from "@/components/content-protection"
+import { YouTubePlayer } from "@/components/youtube-player"
+import { getWatchProgress, saveWatchProgress } from "@/app/actions/progress"
 import type { Lesson } from "@/lib/data"
-import { parseVideoSource } from "@/lib/video"
+import { parseVideoSource, WATCH_THRESHOLD } from "@/lib/video"
 import { cn } from "@/lib/utils"
 
 /**
- * Renders a single lesson in full inside the course page: a video player that
- * supports MP4, Supabase Storage, YouTube, and Vimeo (or a "coming soon"
- * notice when no real video is set yet), the lesson transcript, an audio
+ * Renders a single lesson in full inside the course page: an embedded YouTube
+ * player with watch-percentage tracking (or a "coming soon" notice when no
+ * video is set yet), the lesson transcript, an audio
  * practice drill, learning objectives, the written material, key terminology,
  * and an inline knowledge check that must be passed before completion.
  */
 export function LessonViewer({
   lesson,
+  courseSlug,
   viewer,
   completed,
   onComplete,
@@ -42,6 +44,7 @@ export function LessonViewer({
   videoFree = false,
 }: {
   lesson: Lesson
+  courseSlug: string
   viewer: string
   completed: boolean
   onComplete: () => void
@@ -56,6 +59,7 @@ export function LessonViewer({
   const hasKc = kc.length > 0
 
   const [watched, setWatched] = useState(completed || !hasVideo)
+  const markWatched = useCallback(() => setWatched(true), [])
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [submitted, setSubmitted] = useState(false)
 
@@ -76,12 +80,15 @@ export function LessonViewer({
   return (
     <div className="flex flex-col gap-5">
       {/* Video / media */}
-      {hasVideo ? (
-        <VideoPlayer
+      {hasVideo && source.videoId ? (
+        <LessonVideo
           key={lesson.id}
-          source={source}
+          videoId={source.videoId}
+          title={lesson.title}
+          courseSlug={courseSlug}
+          lessonId={lesson.id}
           viewer={viewer}
-          onWatched={() => setWatched(true)}
+          onWatched={markWatched}
           watched={watched}
         />
       ) : lesson.type === "video" && !videoFree ? (
@@ -295,7 +302,7 @@ export function LessonViewer({
               {!canComplete && (
                 <p className="text-xs text-muted-foreground">
                   {!watched
-                    ? "Finish watching the lesson video to continue."
+                    ? `Watch at least ${WATCH_THRESHOLD}% of the lesson video to continue.`
                     : hasKc
                       ? "Pass the knowledge check above to complete this lesson."
                       : ""}
@@ -378,99 +385,70 @@ function AudioPractice({ url }: { url: string }) {
 }
 
 /**
- * Video player supporting MP4/Supabase (native <video> with watch tracking)
- * and YouTube/Vimeo (privacy-friendly iframe embeds). File playback disables
- * download and picture-in-picture and carries a per-viewer watermark; embeds
- * ask the learner to confirm they finished watching, since cross-origin
- * players cannot report progress.
+ * Embedded YouTube lesson video. Loads the learner's saved watch percentage,
+ * saves progress as they watch, and unlocks completion once they have watched
+ * at least WATCH_THRESHOLD percent of the video.
  */
-function VideoPlayer({
-  source,
+function LessonVideo({
+  videoId,
+  title,
+  courseSlug,
+  lessonId,
   viewer,
   watched,
   onWatched,
 }: {
-  source: ReturnType<typeof parseVideoSource>
+  videoId: string
+  title: string
+  courseSlug: string
+  lessonId: string
   viewer: string
   watched: boolean
   onWatched: () => void
 }) {
-  const ref = useRef<HTMLVideoElement>(null)
-  const firedRef = useRef(watched)
+  const { data: saved } = useSWR(["watch-progress", courseSlug, lessonId], () => getWatchProgress(courseSlug, lessonId))
+  const [livePercent, setLivePercent] = useState(0)
+  const percent = Math.max(saved?.maxPercent ?? 0, livePercent)
 
   useEffect(() => {
-    firedRef.current = watched
-  }, [watched])
+    if (!watched && percent >= WATCH_THRESHOLD) onWatched()
+  }, [percent, watched, onWatched])
 
-  if (source.isFile && source.fileUrl) {
-    return (
-      <div className="relative overflow-hidden rounded-xl bg-black" onContextMenu={(e) => e.preventDefault()}>
-        {/* eslint-disable-next-line jsx-a11y/media-has-caption -- lesson provides a full transcript section */}
-        <video
-          ref={ref}
-          src={source.fileUrl}
-          controls
-          preload="metadata"
-          playsInline
-          disablePictureInPicture
-          controlsList="nodownload noplaybackrate"
-          className="aspect-video w-full"
-          onTimeUpdate={(e) => {
-            const v = e.currentTarget
-            if (!firedRef.current && v.duration && v.currentTime / v.duration >= 0.9) {
-              firedRef.current = true
-              onWatched()
-            }
-          }}
-          onEnded={() => {
-            if (!firedRef.current) {
-              firedRef.current = true
-              onWatched()
-            }
-          }}
-        />
-        <div className="pointer-events-none absolute inset-0">
-          <Watermark label={viewer} />
-        </div>
-        <StatusBadge watched={watched} />
-        <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
-          <PlayCircle className="h-3.5 w-3.5" /> Lesson video
-        </div>
-      </div>
-    )
-  }
-
-  // Embedded player (YouTube / Vimeo).
   return (
-    <div className="flex flex-col gap-3">
-      <div className="relative overflow-hidden rounded-xl bg-black">
-        <iframe
-          src={source.embedUrl}
-          title="Lesson video"
-          className="aspect-video w-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          referrerPolicy="strict-origin-when-cross-origin"
-        />
-        <div className="pointer-events-none absolute inset-0">
-          <Watermark label={viewer} />
+    <div className="flex flex-col gap-2">
+      <YouTubePlayer
+        videoId={videoId}
+        title={title}
+        viewer={viewer}
+        initialPercent={saved?.maxPercent ?? 0}
+        onProgress={(u) => {
+          setLivePercent((p) => Math.max(p, u.percent))
+          void saveWatchProgress({ courseSlug, lessonId, ...u })
+        }}
+      />
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div
+          className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-label="Video watched"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+        >
+          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${percent}%` }} />
         </div>
-        <StatusBadge watched={watched} />
+        <span className="inline-flex items-center gap-1.5 tabular-nums">
+          {watched || percent >= WATCH_THRESHOLD ? (
+            <>
+              <CheckCircle2 className="h-3.5 w-3.5 text-success" /> Video watched
+            </>
+          ) : (
+            <>
+              <PlayCircle className="h-3.5 w-3.5" /> {percent}% watched · {WATCH_THRESHOLD}% required
+            </>
+          )}
+        </span>
       </div>
-      {!watched && (
-        <Button variant="outline" onClick={onWatched} className="self-start">
-          <CheckCircle2 className="h-4 w-4" /> I&apos;ve finished watching this video
-        </Button>
-      )}
-    </div>
-  )
-}
-
-function StatusBadge({ watched }: { watched: boolean }) {
-  return (
-    <div className="pointer-events-none absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
-      <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-      {watched ? "Watched" : "Protected stream"}
     </div>
   )
 }

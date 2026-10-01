@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState, type ReactNode } from "react"
-import { Play, Pause, Lock, ShieldCheck, X, FileText, Maximize2, BookOpen, ImageIcon, CheckCircle2 } from "lucide-react"
+import { useEffect, type ReactNode } from "react"
+import { Lock, X, FileText, BookOpen, ImageIcon, CheckCircle2 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 
@@ -63,96 +63,6 @@ export function ProtectedNotice({ text }: { text: string }) {
     <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
       <Lock className="h-3.5 w-3.5 text-primary" />
       {text}
-    </div>
-  )
-}
-
-/**
- * Protected video player. Streams only (no download/PiP), branded with the
- * Creovixa logo and a per-viewer watermark. Playback progress drives lesson
- * completion via onComplete.
- */
-export function ProtectedVideoPlayer({
-  title,
-  viewer,
-  completed = false,
-  onComplete,
-}: {
-  title: string
-  viewer: string
-  completed?: boolean
-  onComplete?: () => void
-}) {
-  const [playing, setPlaying] = useState(false)
-  const [pct, setPct] = useState(completed ? 100 : 0)
-  const firedRef = useRef(completed)
-
-  useEffect(() => {
-    if (!playing || pct >= 100) return
-    const t = setTimeout(() => setPct((p) => Math.min(100, p + 2)), 160)
-    return () => clearTimeout(t)
-  }, [playing, pct])
-
-  useEffect(() => {
-    if (pct >= 100) {
-      setPlaying(false)
-      if (!firedRef.current) {
-        firedRef.current = true
-        onComplete?.()
-      }
-    }
-  }, [pct, onComplete])
-
-  return (
-    <div
-      className="relative aspect-video w-full overflow-hidden rounded-xl bg-secondary text-white"
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      {/* Background surface */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 30% 20%, rgba(249,115,22,0.18), transparent 55%), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.06), transparent 50%)",
-        }}
-      />
-      <Watermark label={viewer} />
-
-      {/* Top bar: brand + protection status */}
-      <div className="absolute inset-x-0 top-0 flex items-center justify-between px-4 py-3">
-        <span className="rounded-md bg-background/90 px-2 py-1">
-          <Logo className="text-sm" />
-        </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-[11px] font-medium backdrop-blur">
-          <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-          Protected stream
-        </span>
-      </div>
-
-      {/* Center play/pause */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <button
-          onClick={() => setPlaying((p) => !p)}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:scale-105"
-          aria-label={playing ? "Pause lesson" : "Play lesson"}
-        >
-          {playing ? <Pause className="h-7 w-7" /> : <Play className="h-7 w-7 translate-x-0.5" />}
-        </button>
-      </div>
-
-      {/* Bottom bar: title + progress */}
-      <div className="absolute inset-x-0 bottom-0 px-4 pb-3 pt-8">
-        <div className="mb-2 flex items-center justify-between text-xs">
-          <span className="truncate font-medium">{title}</span>
-          <span className="inline-flex items-center gap-2 text-white/70">
-            {pct >= 100 ? "Watched" : `${pct}%`}
-            <Maximize2 className="h-3.5 w-3.5 opacity-60" aria-hidden="true" />
-          </span>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
-          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-        </div>
-      </div>
     </div>
   )
 }
