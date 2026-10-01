@@ -87,6 +87,8 @@ export interface Lesson {
   content?: string[]
   /** Key terminology introduced in this lesson. */
   terminology?: TermItem[]
+  /** Short recap shown after the key terminology. */
+  summary?: string
   /** Inline knowledge check the learner must pass to complete the lesson. */
   knowledgeCheck?: KnowledgeQuestion[]
   /** Admin-authored training notes (lightweight rich text); replaces `content` when set. */

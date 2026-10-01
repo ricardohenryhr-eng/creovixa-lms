@@ -199,6 +199,16 @@ export function LessonViewer({
           </section>
         ) : null}
 
+        {/* Lesson summary */}
+        {lesson.summary?.trim() ? (
+          <section className="mt-6">
+            <SectionTitle icon={FileText}>Summary</SectionTitle>
+            <p className="mt-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-pretty text-sm leading-relaxed text-foreground/90">
+              {lesson.summary}
+            </p>
+          </section>
+        ) : null}
+
         {/* PDF attachments */}
         {lesson.attachments?.length ? (
           <section className="mt-6">
@@ -226,7 +236,7 @@ export function LessonViewer({
         {hasKc && (
           <section className="mt-6">
             <SectionTitle icon={ListChecks}>Knowledge check</SectionTitle>
-            <p className="mt-1 text-xs text-muted-foreground">Answer correctly to complete this lesson.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Passing score: 100%. Answer every question correctly to complete this lesson.</p>
             <div className="mt-3 flex flex-col gap-5">
               {kc.map((q, qi) => {
                 const selected = answers[q.id]

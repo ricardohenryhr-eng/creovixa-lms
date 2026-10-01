@@ -63,6 +63,7 @@ const specs: LessonSpec[] = [
       { term: "Ad hoc interpreter", definition: "An untrained person, such as a relative or bilingual staff member, used to interpret informally." },
       { term: "Qualified interpreter", definition: "An interpreter who has demonstrated language proficiency, interpreting skill, and knowledge of ethics and terminology." },
     ],
+    summary: "Language access is a patient-safety and civil-rights requirement. Qualified medical interpreters, not family members or untrained bilingual staff, deliver complete, accurate, and confidential communication so LEP patients receive the same quality of care as everyone else.",
     knowledgeCheck: [
       { id: "k1", question: "Why should a patient's minor child not be used as an interpreter in a routine visit?", options: ["Children are slower interpreters", "It risks omissions, emotional harm, and breaches of privacy and accuracy", "Children cannot speak two languages", "It is faster to use a professional"], answer: 1, explanation: "Minors are not trained, may filter difficult information, and should not carry that burden." },
       { id: "k2", question: "Which law requires federally funded healthcare organizations to provide language access?", options: ["HIPAA only", "Title VI of the Civil Rights Act", "The Fair Labor Standards Act", "No law requires it"], answer: 1 },
@@ -93,6 +94,7 @@ const specs: LessonSpec[] = [
       { term: "Cultural broker", definition: "Transparently raising a cultural issue that could cause a misunderstanding, without explaining it on anyone's behalf." },
       { term: "Advocate", definition: "A rare role used only when patient safety or dignity is seriously at risk." },
     ],
+    summary: "The interpreter's default role is the conduit: render every message faithfully in the first person. Step into the clarifier, cultural broker, or (rarely) advocate role only when needed, always transparently, and return to interpreting right away.",
     knowledgeCheck: [
       { id: "k1", question: "The default role of a medical interpreter is:", options: ["Advocate", "Cultural broker", "Conduit", "Patient navigator"], answer: 2 },
       { id: "k2", question: "When an interpreter steps out of the conduit role, they must:", options: ["Do it silently", "Announce it transparently to both parties and return quickly", "Only tell the provider", "Ask permission from a supervisor first"], answer: 1 },
@@ -123,6 +125,7 @@ const specs: LessonSpec[] = [
       { term: "Conflict of interest", definition: "A personal relationship or interest that could affect, or appear to affect, impartial interpreting." },
       { term: "Register", definition: "The level of formality of speech, which the interpreter preserves." },
     ],
+    summary: "The NCIHC code rests on nine principles: accuracy, confidentiality, impartiality, respect, cultural awareness, role boundaries, professionalism, professional development, and advocacy. Disclose conflicts, correct errors immediately, and resolve dilemmas through a structured, transparent process.",
     knowledgeCheck: [
       { id: "k1", question: "A patient you interpret for turns out to be your neighbor. You should:", options: ["Continue and say nothing", "Disclose the conflict of interest so a decision can be made", "Refuse to speak to them", "Interpret but summarize"], answer: 1 },
       { id: "k2", question: "If you realize you misinterpreted a dosage a moment ago, you should:", options: ["Hope no one noticed", "Correct the error immediately and transparently", "Tell the patient privately later", "Ask the provider to repeat everything"], answer: 1 },
@@ -153,6 +156,7 @@ const specs: LessonSpec[] = [
       { term: "Professional introduction", definition: "A short statement of name, role, confidentiality, and first-person interpreting given to all parties." },
       { term: "First-person interpreting", definition: "Speaking as the speaker ('I have pain'), not about them ('She says she has pain')." },
     ],
+    summary: "Standards of practice turn ethical values into observable behavior. Structure every encounter into pre-session, session, and post-session; open with a professional introduction, interpret in the first person, and leave with the provider while disposing of notes securely.",
     knowledgeCheck: [
       { id: "k1", question: "The difference between the code of ethics and the standards of practice is:", options: ["There is no difference", "Ethics state values; standards describe the behaviors that put them into practice", "Standards apply only to court interpreters", "Ethics are optional"], answer: 1 },
       { id: "k2", question: "After the encounter, the interpreter should generally:", options: ["Stay with the patient to chat", "Leave with the provider and dispose of notes securely", "Keep notes for the next visit", "Give the patient their phone number"], answer: 1 },
@@ -184,6 +188,7 @@ const specs: LessonSpec[] = [
       { term: "Minimum necessary", definition: "Using or disclosing only the PHI required to accomplish the task." },
       { term: "Breach", definition: "An unauthorized use or disclosure of PHI that must be reported." },
     ],
+    summary: "Protected health information is safeguarded in every format. Follow the minimum necessary rule, never discuss or post about patients, shred or hand over notes, work remotely only in private spaces, and report breaches. Safety disclosures are always interpreted faithfully.",
     knowledgeCheck: [
       { id: "k1", question: "Which of these is protected health information?", options: ["A hospital's public address", "A patient's name together with their diagnosis", "A general medical textbook", "The interpreter's schedule"], answer: 1 },
       { id: "k2", question: "Notes taken during a session should be:", options: ["Kept in your bag for reference", "Photographed for your records", "Shredded or given to the provider after the session", "Shared with your colleague"], answer: 2 },
@@ -214,6 +219,7 @@ const specs: LessonSpec[] = [
       { term: "Sight translation", definition: "Reading a written document aloud in another language." },
       { term: "Décalage", definition: "The lag between the speaker and the interpreter in simultaneous mode." },
     ],
+    summary: "Consecutive interpreting is the standard clinical mode; simultaneous fits crises, mental health, and group settings; sight translation renders short written documents aloud. Choose the mode that best protects accuracy and support memory with brief, secure notes.",
     knowledgeCheck: [
       { id: "k1", question: "The standard mode for most clinical appointments is:", options: ["Simultaneous", "Consecutive", "Summary", "Whispered"], answer: 1 },
       { id: "k2", question: "During sight translation of discharge instructions, the interpreter should:", options: ["Explain what the instructions mean", "Render the text faithfully and let the provider explain", "Skip the fine print", "Summarize the key points"], answer: 1 },
@@ -244,6 +250,7 @@ const specs: LessonSpec[] = [
       { term: "Turn-taking", definition: "Managing who speaks so every utterance can be interpreted." },
       { term: "Third person", definition: "Referring to yourself as 'the interpreter' to mark your own speech." },
     ],
+    summary: "Position yourself so provider and patient speak directly to each other, manage segment length to protect accuracy, and intervene briefly in the third person ('the interpreter...') only when necessary. Interpret everything said in the room.",
     knowledgeCheck: [
       { id: "k1", question: "When the interpreter needs to clarify a term, they should say:", options: ["'What did you mean?' without explanation", "'The interpreter would like to clarify the term…' and inform both parties", "Nothing, and guess", "Ask the patient privately"], answer: 1 },
       { id: "k2", question: "Good positioning in an exam room allows:", options: ["The provider to speak only to the interpreter", "The provider and patient to communicate directly with each other", "The interpreter to lead the visit", "The patient to face the interpreter only"], answer: 1 },
@@ -274,6 +281,7 @@ const specs: LessonSpec[] = [
       { term: "Suffix", definition: "A word part at the end indicating a condition or procedure (e.g., -itis)." },
       { term: "False cognate", definition: "A word that looks similar in two languages but has a different meaning." },
     ],
+    summary: "Medical terms are built from roots, prefixes, and suffixes joined by combining vowels. Decoding word parts lets you understand unfamiliar terms in real time; keep a bilingual glossary, preserve each speaker's register, and never guess at a term.",
     knowledgeCheck: [
       { id: "k1", question: "The term 'gastritis' means:", options: ["Removal of the stomach", "Inflammation of the stomach", "Slow digestion", "Stomach examination"], answer: 1 },
       { id: "k2", question: "If you don't recognize a term during a session, you should:", options: ["Guess from context", "Skip it", "Ask for clarification transparently", "Substitute a similar word"], answer: 2 },
@@ -286,13 +294,22 @@ const specs: LessonSpec[] = [
     duration: "9:47",
     type: "video",
     videoUrl: yt("0JDCViWGn-0"),
-    images: [{ url: "/images/medical/m9-anatomy.png", caption: "Knowing each body system helps you place terms accurately under pressure." }],
+    images: [
+      { url: "/images/medical/m9-anatomy.png", caption: "Knowing each body system helps you place terms accurately under pressure." },
+      { url: "/images/medical/m5-heart-cardiovascular.png", caption: "Heart anatomy: four chambers, valves, and the arteries (red) and veins (blue) of the cardiovascular system." },
+      { url: "/images/medical/m5-respiratory-digestive.png", caption: "Respiratory anatomy (trachea, bronchi, lungs) and digestive anatomy (esophagus to large intestine)." },
+      { url: "/images/medical/m5-musculoskeletal-nervous.png", caption: "The skeletal, muscular, and nervous systems." },
+    ],
     objectives: [
       "Identify the major body systems and their functions",
+      "Describe the basic anatomy of the heart, lungs, digestive tract, skeleton, muscles, and nervous system",
       "Connect common conditions and procedures to each system",
       "Use anatomical knowledge to disambiguate terms",
     ],
     content: [
+      "Heart anatomy: the heart has four chambers. The right atrium receives oxygen-poor blood from the body and the right ventricle pumps it to the lungs; the left atrium receives oxygen-rich blood from the lungs and the left ventricle, the strongest chamber, pumps it to the body through the aorta. Four valves (tricuspid, pulmonary, mitral, aortic) keep blood moving in one direction, and the coronary arteries supply the heart muscle itself. Patients may describe a 'murmur' or 'skipped beats'; providers may say 'valve regurgitation' or 'atrial fibrillation'.",
+      "Respiratory anatomy: air travels through the nose and mouth, the pharynx and larynx, down the trachea, and into the right and left bronchi, which branch into bronchioles ending in tiny air sacs called alveoli, where oxygen enters the blood and carbon dioxide leaves it. The diaphragm is the main breathing muscle. Digestive anatomy: food passes from the mouth through the esophagus to the stomach, small intestine (duodenum, jejunum, ileum), and large intestine (colon, rectum), helped by the liver, gallbladder, and pancreas.",
+      "Skeletal and muscular systems: the adult skeleton has 206 bones that support the body, protect organs, store minerals, and produce blood cells in the marrow. Muscles are skeletal (voluntary movement), smooth (in organs and vessels), or cardiac (the heart). Tendons attach muscle to bone and ligaments attach bone to bone. Nervous system: the central nervous system is the brain and spinal cord; the peripheral nervous system is the nerves that branch out to the rest of the body and carry sensory and motor signals.",
       "The cardiovascular system (heart, arteries, veins) moves blood; common topics include hypertension, myocardial infarction, arrhythmia, and cholesterol. The respiratory system (lungs, airways) exchanges gases; expect asthma, COPD, pneumonia, and oxygen saturation. The nervous system (brain, spinal cord, nerves) controls the body; expect stroke, seizures, migraines, and neuropathy.",
       "The digestive system processes food — think reflux, ulcers, hepatitis, gallstones, and colonoscopy. The musculoskeletal system covers bones, joints, and muscles — fractures, arthritis, sprains, and physical therapy. The endocrine system regulates hormones — diabetes, thyroid disorders, and insulin. The renal/urinary system filters blood — kidney disease, dialysis, and urinary tract infections.",
       "The reproductive system includes prenatal care, labor and delivery, and gynecological care; the integumentary system covers skin conditions and wounds; and the immune and lymphatic systems cover infections, vaccines, allergies, and cancers such as lymphoma.",
@@ -303,7 +320,12 @@ const specs: LessonSpec[] = [
       { term: "COPD", definition: "Chronic obstructive pulmonary disease, a long-term lung condition that restricts airflow." },
       { term: "Endocrine", definition: "Relating to glands that release hormones into the blood." },
       { term: "Dialysis", definition: "A treatment that filters the blood when the kidneys cannot." },
+      { term: "Ventricle", definition: "One of the two lower pumping chambers of the heart." },
+      { term: "Alveoli", definition: "Tiny air sacs in the lungs where oxygen and carbon dioxide are exchanged." },
+      { term: "Ligament", definition: "Tough tissue connecting bone to bone at a joint." },
+      { term: "Central nervous system", definition: "The brain and spinal cord." },
     ],
+    summary: "Each body system has its own anatomy, vocabulary, and common conditions: the four-chambered heart and blood vessels, the airways and alveoli, the digestive tract, the 206-bone skeleton and three muscle types, and the central and peripheral nervous systems. Knowing them helps you interpret precisely under pressure.",
     knowledgeCheck: [
       { id: "k1", question: "Insulin and diabetes relate mainly to which system?", options: ["Respiratory", "Endocrine", "Musculoskeletal", "Integumentary"], answer: 1 },
       { id: "k2", question: "A provider discussing 'oxygen saturation' and 'inhalers' is most likely addressing the:", options: ["Respiratory system", "Renal system", "Digestive system", "Nervous system"], answer: 0 },
@@ -334,6 +356,7 @@ const specs: LessonSpec[] = [
       { term: "Stereotyping", definition: "Assuming an individual holds beliefs because of their group identity." },
       { term: "Cultural brokering", definition: "Transparently flagging a cultural issue so the parties can address it directly." },
     ],
+    summary: "Culture shapes how patients understand illness, describe symptoms, and make decisions. Recognize your own assumptions, avoid stereotypes, and act as a cultural broker only transparently, when a cultural gap threatens understanding.",
     knowledgeCheck: [
       { id: "k1", question: "When you notice a possible cultural misunderstanding, the best action is to:", options: ["Explain the patient's culture to the provider", "Transparently alert both parties and let the provider ask the patient", "Ignore it", "Change the provider's question"], answer: 1 },
       { id: "k2", question: "Cultural competence for an interpreter begins with:", options: ["Memorizing cultural rules", "Self-awareness and avoiding generalizations", "Agreeing with the patient", "Speaking for the patient's community"], answer: 1 },
@@ -364,6 +387,7 @@ const specs: LessonSpec[] = [
       { term: "Palliative care", definition: "Care focused on comfort and quality of life in serious illness." },
       { term: "Informed consent", definition: "A patient's voluntary agreement after understanding risks, benefits, and alternatives." },
     ],
+    summary: "Specialty settings bring specific demands: speed and stress in emergency care, preserving disorganized speech in mental health, emotional weight in oncology, and family dynamics in pediatrics. Prepare terminology in advance and practice self-care after difficult sessions.",
     knowledgeCheck: [
       { id: "k1", question: "A mental health patient speaks in disorganized sentences. You should:", options: ["Make the sentences coherent", "Interpret the speech as it is, noting any linguistic ambiguity", "Summarize the main idea", "Stop interpreting"], answer: 1 },
       { id: "k2", question: "When a provider delivers a cancer diagnosis, the interpreter should:", options: ["Soften the message to protect the patient", "Interpret it completely and accurately", "Let a family member interpret instead", "Wait for the patient to ask"], answer: 1 },
@@ -394,6 +418,7 @@ const specs: LessonSpec[] = [
       { term: "Interpreter ID", definition: "The number or code that identifies the interpreter for the client's records." },
       { term: "Latency", definition: "Delay in audio or video transmission that can disrupt turn-taking." },
     ],
+    summary: "Remote interpreting (OPI and VRI) requires a private, quiet workspace, a quality headset, stable connections, clear openings, and active flow management. Announce technical problems to both parties and ask for repetition rather than filling gaps.",
     knowledgeCheck: [
       { id: "k1", question: "If you miss part of a message because the audio cut out, you should:", options: ["Guess from context", "Tell both parties and ask for a repetition", "Skip it", "End the call"], answer: 1 },
       { id: "k2", question: "Which is required for a compliant remote workstation?", options: ["A shared open office", "A private, quiet room and a headset", "A speakerphone in a café", "Recording every call"], answer: 1 },
@@ -424,6 +449,7 @@ const specs: LessonSpec[] = [
       { term: "CEU", definition: "Continuing education unit, required to maintain certification." },
       { term: "IMIA", definition: "International Medical Interpreters Association, a professional association." },
     ],
+    summary: "Certification through NBCMI (CMI) or CCHI (CoreCHI, CHI) validates your skills. Plan your training hours, language testing, and exam preparation, then keep growing through continuing education and professional associations.",
     knowledgeCheck: [
       { id: "k1", question: "How many hours of medical interpreter training do CCHI and NBCMI require?", options: ["10", "20", "40", "100"], answer: 2 },
       { id: "k2", question: "What score is required to pass this program's final assessment?", options: ["60%", "70%", "80%", "100%"], answer: 2 },
@@ -455,6 +481,7 @@ const specs: LessonSpec[] = [
       { term: "Prior authorization", definition: "Insurer approval required before certain services or medications are covered." },
       { term: "Triage", definition: "Sorting patients by the urgency of their condition." },
     ],
+    summary: "The U.S. healthcare system spans primary, specialty, emergency, inpatient, and post-acute care, funded by private insurance, Medicare, and Medicaid. Understanding settings, payers, and common administrative terms helps you interpret registration, billing, and care-coordination conversations accurately.",
     knowledgeCheck: [
       { id: "k1", question: "Which program primarily covers people aged 65 and older?", options: ["Medicaid", "Medicare", "CHIP", "Marketplace plans"], answer: 1 },
       { id: "k2", question: "In the emergency department, patients are seen according to:", options: ["Arrival time", "Insurance type", "Severity of condition", "Preferred language"], answer: 2 },
@@ -485,6 +512,7 @@ const specs: LessonSpec[] = [
       { term: "Register", definition: "The level of formality and style of language." },
       { term: "Written translation", definition: "A full written rendering of a document by a qualified translator." },
     ],
+    summary: "Sight translation is for short documents: preview, render faithfully, and check numbers and dates. Long or legally significant documents need written translation, and the provider, not the interpreter, explains what a document means.",
     knowledgeCheck: [
       { id: "k1", question: "What is the first step before sight translating a document?", options: ["Summarize it", "Preview the whole document", "Ask the patient to sign", "Translate only the headings"], answer: 1 },
       { id: "k2", question: "Who explains the meaning of a consent form to the patient?", options: ["The interpreter", "The patient's family", "The provider", "The registrar"], answer: 2 },
