@@ -29,6 +29,14 @@ export function isAdminRole(role: Role | null | undefined): boolean {
   return role === "super_admin" || role === "admin"
 }
 
+/**
+ * Staff roles (Super Admin, Admin, Instructor/Trainer) open any course, lesson,
+ * quiz, or assessment directly. Sequential locks apply only to learners.
+ */
+export function canBypassProgression(role: Role | null | undefined): boolean {
+  return role === "super_admin" || role === "admin" || role === "trainer"
+}
+
 /** Only the Super Admin may create/delete admins or promote users to admin. */
 export function canManageAdmins(email: string | null | undefined): boolean {
   return isSuperAdminEmail(email)

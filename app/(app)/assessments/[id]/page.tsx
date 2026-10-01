@@ -17,6 +17,8 @@ import {
 import { Card, Badge, Button, Progress } from "@/components/ui"
 import { getAssessment, getCourse } from "@/lib/data"
 import { useProgress } from "@/lib/progress"
+import { useProgressionBypass } from "@/lib/use-progression-bypass"
+import { AdminPreviewBadge } from "@/components/admin-preview-badge"
 import { assessmentUnlocked } from "@/lib/curriculum"
 import { cn } from "@/lib/utils"
 
@@ -29,7 +31,9 @@ export default function QuizPage() {
   const total = assessment.questions.length
   const { state, markAssessmentPassed } = useProgress()
   const recordedRef = useRef(false)
-  const locked = course ? !assessmentUnlocked(course, state) : false
+  const bypass = useProgressionBypass()
+  const wouldLock = course ? !assessmentUnlocked(course, state) : false
+  const locked = !bypass && wouldLock
 
   const [started, setStarted] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -112,6 +116,7 @@ export default function QuizPage() {
         <Link href="/assessments" className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to assessments
         </Link>
+        {bypass && <AdminPreviewBadge className="mb-4" detail={wouldLock ? "Quiz opened before lessons were completed" : undefined} />}
         <Card className="p-6 sm:p-8">
           <Badge tone="orange">{assessment.category}</Badge>
           <h1 className="mt-3 font-display text-2xl font-bold tracking-tight">{assessment.title}</h1>
