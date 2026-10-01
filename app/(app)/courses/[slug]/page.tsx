@@ -31,7 +31,7 @@ import { useProgress } from "@/lib/progress"
 import { getCourse } from "@/lib/data"
 import type { Course, LessonType } from "@/lib/data"
 import { formatDuration } from "@/lib/video"
-import { isVideoFreeCourse, lessonKey, type LessonContentRow } from "@/lib/lesson-content"
+import { applyLessonOrder, isVideoFreeCourse, lessonKey, type LessonContentRow } from "@/lib/lesson-content"
 import {
   previousCourse,
   courseAssessment,
@@ -63,8 +63,10 @@ const typeLabel: Record<LessonType, string> = {
   pdf: "Document",
 }
 
-const videosFetcher = (url: string): Promise<{ videos: Record<string, LessonContentRow> }> =>
-  fetch(url).then((r) => (r.ok ? r.json() : { videos: {} }))
+const videosFetcher = (
+  url: string,
+): Promise<{ videos: Record<string, LessonContentRow>; order?: Record<string, string[]> }> =>
+  fetch(url).then((r) => (r.ok ? r.json() : { videos: {}, order: {} }))
 
 export default function CourseDetailPage() {
   const params = useParams<{ slug: string }>()
@@ -83,11 +85,12 @@ export default function CourseDetailPage() {
   const videoFree = isVideoFreeCourse(course.slug)
   const vcourse = useMemo<Course>(() => {
     const videos = videoData?.videos ?? {}
+    const order = videoData?.order ?? {}
     return {
       ...course,
       modules: course.modules.map((m) => ({
         ...m,
-        lessons: m.lessons.map((l) => {
+        lessons: applyLessonOrder(m.lessons, order[m.id]).map((l) => {
           const base = videoFree ? { ...l, videoUrl: undefined } : l
           const v = videos[lessonKey(m.id, l.id)]
           if (!v) return base

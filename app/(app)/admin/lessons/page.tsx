@@ -11,7 +11,9 @@ import {
   CircleDashed,
   ExternalLink,
   Eye,
+  EyeOff,
   FileText,
+  GripVertical,
   Heading2,
   ImageIcon,
   Italic,
@@ -37,7 +39,18 @@ import {
   type LessonImage,
   type LessonStatus,
 } from "@/lib/lesson-content"
-import { deleteLessonVideo, listLessonContent, saveLessonContent, uploadLessonAsset } from "@/app/actions/videos"
+import {
+  createLessonVideoUpload,
+  deleteLessonVideo,
+  listLessonContent,
+  listLessonOrder,
+  saveLessonContent,
+  saveLessonOrder,
+  setLessonStatus,
+  uploadLessonAsset,
+} from "@/app/actions/videos"
+import { createClient } from "@/lib/supabase/client"
+import { applyLessonOrder } from "@/lib/lesson-content"
 import { cn } from "@/lib/utils"
 
 const sortedCourses = courses.slice().sort((a, b) => a.order - b.order)
@@ -47,12 +60,19 @@ const fieldClass =
 export default function AdminLessonsPage() {
   const [courseSlug, setCourseSlug] = useState(sortedCourses[0]?.slug ?? "")
   const course = sortedCourses.find((c) => c.slug === courseSlug)
+  const { data: order, mutate: mutateOrder } = useSWR(courseSlug ? ["lesson-order", courseSlug] : null, () =>
+    listLessonOrder(courseSlug),
+  )
   const lessonOptions = useMemo(
     () =>
       (course?.modules ?? []).flatMap((m) =>
-        m.lessons.map((l) => ({ key: lessonKey(m.id, l.id), moduleTitle: m.title, lesson: l })),
+        applyLessonOrder(m.lessons, order?.[m.id]).map((l) => ({
+          key: lessonKey(m.id, l.id),
+          moduleTitle: m.title,
+          lesson: l,
+        })),
       ),
-    [course],
+    [course, order],
   )
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const current = lessonOptions.find((o) => o.key === selectedKey) ?? lessonOptions[0]
@@ -107,6 +127,18 @@ export default function AdminLessonsPage() {
           </select>
         </label>
       </Card>
+
+      {course ? (
+        <LessonOrderPanel
+          key={`${courseSlug}:${JSON.stringify(order ?? {})}`}
+          courseSlug={courseSlug}
+          modules={course.modules}
+          order={order ?? {}}
+          selectedKey={current?.key}
+          onSelect={setSelectedKey}
+          onSaved={() => mutateOrder()}
+        />
+      ) : null}
 
       {course && current ? (
         <LessonEditor
@@ -177,6 +209,15 @@ function LessonEditor({
     })
   }
 
+  function toggleStatus(status: LessonStatus) {
+    setMessage(null)
+    startTransition(async () => {
+      const res = await setLessonStatus(courseSlug, lessonKeyValue, status)
+      setMessage({ ok: res.ok, text: res.ok ? (res.message ?? "Updated.") : (res.error ?? "Update failed.") })
+      if (res.ok) onSaved()
+    })
+  }
+
   function reset() {
     if (!row) return
     if (!window.confirm("Discard all edits for this lesson and restore the default content?")) return
@@ -226,13 +267,33 @@ function LessonEditor({
             {row?.updatedAt ? <span>Last saved {new Date(row.updatedAt).toLocaleString()}</span> : null}
           </div>
         </div>
-        <Link
-          href={`/courses/${courseSlug}`}
-          target="_blank"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-        >
-          Open course <ExternalLink className="h-3.5 w-3.5" />
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          {row ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              onClick={() => toggleStatus(row.status === "draft" ? "published" : "draft")}
+            >
+              {row.status === "draft" ? (
+                <>
+                  <CircleCheck className="h-4 w-4" /> Publish
+                </>
+              ) : (
+                <>
+                  <EyeOff className="h-4 w-4" /> Unpublish
+                </>
+              )}
+            </Button>
+          ) : null}
+          <Link
+            href={`/courses/${courseSlug}`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          >
+            Open course <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </Card>
 
       {/* 1. Video */}
@@ -254,7 +315,7 @@ function LessonEditor({
               <p className="text-xs text-destructive">
                 {"That link isn't recognised. Paste a full YouTube link (youtube.com/watch?v=… or youtu.be/…)."}
               </p>
-            ) : videoKind === "youtube" ? (
+            ) : videoKind === "youtube" || videoKind === "vimeo" ? (
               <div className="aspect-video overflow-hidden rounded-lg border border-border bg-muted">
                 <iframe
                   src={parseVideoSource(videoUrl).embedUrl}
@@ -264,11 +325,28 @@ function LessonEditor({
                   allowFullScreen
                 />
               </div>
+            ) : videoUrl.trim() ? (
+              <video
+                src={videoUrl}
+                controls
+                preload="metadata"
+                className="aspect-video w-full rounded-lg border border-border bg-muted"
+              >
+                <track kind="captions" />
+              </video>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Paste a YouTube link and it embeds automatically at the top of the lesson.
+                Paste a YouTube link or upload an MP4. It plays at the top of the lesson.
               </p>
             )}
+            <VideoUploadButton
+              courseSlug={courseSlug}
+              onUploaded={(url) => {
+                setVideoUrl(url)
+                setMessage({ ok: true, text: "Video uploaded. Preview it above, then publish." })
+              }}
+              onError={(text) => setMessage({ ok: false, text })}
+            />
           </div>
         )}
       </EditorSection>
@@ -533,6 +611,183 @@ function LessonEditor({
           </Button>
         </div>
       </Card>
+    </div>
+  )
+}
+
+type ModuleLike = { id: string; title: string; lessons: Lesson[] }
+
+function LessonOrderPanel({
+  courseSlug,
+  modules,
+  order,
+  selectedKey,
+  onSelect,
+  onSaved,
+}: {
+  courseSlug: string
+  modules: ModuleLike[]
+  order: Record<string, string[]>
+  selectedKey?: string
+  onSelect: (key: string) => void
+  onSaved: () => void
+}) {
+  const [lists, setLists] = useState<Record<string, Lesson[]>>(() =>
+    Object.fromEntries(modules.map((m) => [m.id, applyLessonOrder(m.lessons, order[m.id])])),
+  )
+  const [dragging, setDragging] = useState<{ moduleId: string; index: number } | null>(null)
+  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
+  const [pending, startTransition] = useTransition()
+  const reorderable = modules.filter((m) => m.lessons.length > 1)
+
+  function persist(moduleId: string, next: Lesson[]) {
+    setLists((prev) => ({ ...prev, [moduleId]: next }))
+    startTransition(async () => {
+      const res = await saveLessonOrder(courseSlug, moduleId, next.map((l) => l.id))
+      setStatus({ ok: res.ok, text: res.ok ? (res.message ?? "Saved.") : (res.error ?? "Could not save the order.") })
+      if (res.ok) onSaved()
+    })
+  }
+
+  function moveTo(moduleId: string, from: number, to: number) {
+    const list = lists[moduleId] ?? []
+    if (from === to || to < 0 || to >= list.length) return
+    const next = list.slice()
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+    persist(moduleId, next)
+  }
+
+  if (reorderable.length === 0) return null
+
+  return (
+    <Card className="flex flex-col gap-4 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="font-display text-base font-semibold">Lesson order</h2>
+          <p className="text-xs text-muted-foreground">
+            Drag lessons to reorder them within a module (or focus a lesson and use Alt + arrow keys). Order saves
+            automatically.
+          </p>
+        </div>
+        <p
+          role="status"
+          aria-live="polite"
+          className={cn("text-xs", status ? (status.ok ? "text-green-700" : "text-destructive") : "text-muted-foreground")}
+        >
+          {pending ? "Saving…" : status?.text}
+        </p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        {reorderable.map((m) => (
+          <div key={m.id} className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold text-pretty">{m.title}</h3>
+            <ol className="flex flex-col gap-1.5">
+              {(lists[m.id] ?? []).map((l, i) => {
+                const key = lessonKey(m.id, l.id)
+                return (
+                  <li
+                    key={l.id}
+                    draggable
+                    tabIndex={0}
+                    aria-label={`${l.title}, position ${i + 1}`}
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move"
+                      setDragging({ moduleId: m.id, index: i })
+                    }}
+                    onDragOver={(e) => {
+                      if (dragging?.moduleId === m.id) e.preventDefault()
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      if (dragging?.moduleId === m.id) moveTo(m.id, dragging.index, i)
+                      setDragging(null)
+                    }}
+                    onDragEnd={() => setDragging(null)}
+                    onKeyDown={(e) => {
+                      if (!e.altKey) return
+                      if (e.key === "ArrowUp") {
+                        e.preventDefault()
+                        moveTo(m.id, i, i - 1)
+                      } else if (e.key === "ArrowDown") {
+                        e.preventDefault()
+                        moveTo(m.id, i, i + 1)
+                      }
+                    }}
+                    className={cn(
+                      "flex cursor-grab items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing",
+                      dragging?.moduleId === m.id && dragging.index === i && "opacity-50",
+                      selectedKey === key && "border-primary",
+                    )}
+                  >
+                    <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="w-5 shrink-0 text-xs tabular-nums text-muted-foreground">{i + 1}</span>
+                    <button
+                      type="button"
+                      className="flex-1 truncate text-left hover:underline"
+                      onClick={() => onSelect(key)}
+                    >
+                      {l.title}
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+function VideoUploadButton({
+  courseSlug,
+  onUploaded,
+  onError,
+}: {
+  courseSlug: string
+  onUploaded: (url: string) => void
+  onError: (text: string) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+
+  async function handle(file: File) {
+    setUploading(true)
+    try {
+      const ticket = await createLessonVideoUpload({ courseSlug, fileType: file.type, fileSize: file.size })
+      if (!ticket.ok || !ticket.path || !ticket.token || !ticket.publicUrl) {
+        onError(ticket.error ?? "Upload failed.")
+        return
+      }
+      const { error } = await createClient()
+        .storage.from("lesson-media")
+        .uploadToSignedUrl(ticket.path, ticket.token, file, { contentType: file.type })
+      if (error) onError(error.message)
+      else onUploaded(ticket.publicUrl)
+    } finally {
+      setUploading(false)
+      if (inputRef.current) inputRef.current.value = ""
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="video/mp4,video/webm"
+        className="sr-only"
+        aria-label="Upload MP4 video"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) void handle(file)
+        }}
+      />
+      <Button variant="outline" size="sm" disabled={uploading} onClick={() => inputRef.current?.click()}>
+        <Upload className="h-4 w-4" /> {uploading ? "Uploading video…" : "Upload MP4"}
+      </Button>
+      <span className="text-xs text-muted-foreground">MP4 or WebM, up to 50 MB.</span>
     </div>
   )
 }
