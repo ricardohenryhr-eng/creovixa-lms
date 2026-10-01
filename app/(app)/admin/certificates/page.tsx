@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Award, CheckCircle2, XCircle, Lock, Search, ArrowRight, Eye, Download, X, ExternalLink, Loader2 } from "lucide-react"
+import { Award, CheckCircle2, XCircle, Lock, Search, ArrowRight, Eye, X, ExternalLink, Loader2 } from "lucide-react"
+import { CertificateDownloadButton } from "@/components/certificate-download-button"
 import { PageHeader, Card, StatCard, Badge, Button, Input, Avatar } from "@/components/ui"
 import { courses, type Certificate } from "@/lib/data"
 import { CertificatePreview } from "@/components/certificate-preview"
@@ -18,6 +19,7 @@ export default function CertificateManagementPage() {
   const [active, setActive] = useState<Certificate | null>(null)
   const [certs, setCerts] = useState<Certificate[]>([])
   const [loading, setLoading] = useState(true)
+  const certRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let alive = true
@@ -153,9 +155,7 @@ export default function CertificateManagementPage() {
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between no-print">
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => window.print()}>
-                  <Download className="h-4 w-4" /> Download PDF
-                </Button>
+                <CertificateDownloadButton targetRef={certRef} certId={active.certId} />
                 <Link href={`/verify/${active.certId}`}>
                   <Button size="sm" variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10">
                     <ExternalLink className="h-4 w-4" /> Verify
@@ -170,7 +170,9 @@ export default function CertificateManagementPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <CertificatePreview cert={active} />
+            <div ref={certRef}>
+              <CertificatePreview cert={active} />
+            </div>
           </div>
         </div>
       )}

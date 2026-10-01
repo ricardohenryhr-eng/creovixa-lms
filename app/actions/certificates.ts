@@ -2,7 +2,13 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { rowToCertificate, type CertificateRow } from "@/lib/certificates"
+import {
+  MEDICAL_PROGRAM_HOURS,
+  MEDICAL_PROGRAM_TITLE,
+  rowToCertificate,
+  type CertificateRow,
+} from "@/lib/certificates"
+import { orderedCourses, courseAssessment } from "@/lib/curriculum"
 import type { Certificate } from "@/lib/data"
 
 const COLUMNS = "id, cert_id, user_id, recipient, course_slug, course_title, score, hours, variant, issued_at, expires_at"
@@ -32,16 +38,39 @@ export async function issueCertificate(input: IssueCertificateInput): Promise<{ 
 
   if (!user) return { ok: false, error: "Not authenticated" }
 
+  // The client never decides what a certificate says: the course, title,
+  // hours, and passing threshold all come from the server-side curriculum.
+  const course = orderedCourses.find((c) => c.slug === input.courseSlug)
+  if (!course) return { ok: false, error: "Unknown course" }
+  if (!input.certId.startsWith(`CVX-${course.certPrefix}-`)) return { ok: false, error: "Invalid certificate ID" }
+
+  const score = Math.round(input.score)
+  if (!Number.isFinite(score) || score < 0 || score > 100) return { ok: false, error: "Invalid score" }
+  const assessment = courseAssessment(course.id)
+  if (assessment && score < assessment.passingScore) {
+    return { ok: false, error: `Final exam not passed (requires ${assessment.passingScore}%)` }
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", user.id)
+    .maybeSingle<{ full_name: string | null }>()
+  const recipient = profile?.full_name?.trim() || input.recipient.trim()
+  if (!recipient) return { ok: false, error: "Missing learner name" }
+
+  const medical = course.certPrefix === "MED"
+
   const { error } = await supabase.from("certificates").upsert(
     {
       cert_id: input.certId,
       user_id: user.id,
-      recipient: input.recipient,
-      course_slug: input.courseSlug ?? null,
-      course_title: input.courseTitle,
-      score: Math.round(input.score),
-      hours: input.hours ?? null,
-      variant: input.variant ?? "standard",
+      recipient,
+      course_slug: course.slug,
+      course_title: medical ? MEDICAL_PROGRAM_TITLE : course.title,
+      score,
+      hours: medical ? MEDICAL_PROGRAM_HOURS : course.hours ?? null,
+      variant: medical ? "medical" : "standard",
       issued_at: input.issuedAt ?? new Date().toISOString(),
       expires_at: input.expiresAt && input.expiresAt.length > 0 ? input.expiresAt : null,
     },

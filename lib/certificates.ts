@@ -1,5 +1,15 @@
 import type { Certificate } from "@/lib/data"
 
+/** Special wording reserved for the final medical program certificate only. */
+export const MEDICAL_PROGRAM_TITLE = "40-Hour Medical Interpreter Training"
+export const MEDICAL_PROGRAM_HOURS = 40
+export const MEDICAL_PROGRAM_DESCRIPTION =
+  "This certifies that the learner has successfully completed the full 40-Hour Medical Interpreter Training Program and all required assessments."
+
+export function isMedicalCertificate(cert: Pick<Certificate, "certId" | "variant">) {
+  return cert.variant === "medical" || cert.certId.split("-")[1]?.toUpperCase() === "MED"
+}
+
 /** Shape of a row in the public.certificates table. */
 export interface CertificateRow {
   id: string

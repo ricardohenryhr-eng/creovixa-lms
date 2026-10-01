@@ -4,6 +4,12 @@ import { QRCodeSVG } from "qrcode.react"
 import { Signature } from "@/components/signature"
 import { formatDate } from "@/lib/utils"
 import type { Certificate } from "@/lib/data"
+import {
+  MEDICAL_PROGRAM_DESCRIPTION,
+  MEDICAL_PROGRAM_HOURS,
+  MEDICAL_PROGRAM_TITLE,
+  isMedicalCertificate,
+} from "@/lib/certificates"
 
 const SIGNATORIES = [
   { key: "ricardo", name: "Ricardo Henry", title: "Chief Executive Officer (CEO)" },
@@ -24,10 +30,6 @@ const GOLD_DEEP = "#8a6516"
  */
 function verificationUrl(certId: string) {
   return `https://lms.creovixa.com/verify/${encodeURIComponent(certId)}`
-}
-
-function isMedicalCert(cert: Certificate) {
-  return cert.variant === "medical" || cert.certId.split("-")[1]?.toUpperCase() === "MED"
 }
 
 /** Small gold diamond used as an ornamental divider. */
@@ -66,15 +68,15 @@ function Seal() {
 
 export function CertificatePreview({ cert }: { cert: Certificate }) {
   const verifyUrl = verificationUrl(cert.certId)
-  const medical = isMedicalCert(cert)
-  const hours = cert.hours ?? (medical ? 40 : undefined)
+  const medical = isMedicalCertificate(cert)
+  const title = medical ? MEDICAL_PROGRAM_TITLE : cert.courseTitle
 
   const completedLine = medical
-    ? "has successfully completed the full medical interpreter program"
+    ? "has successfully completed the certification program"
     : "has successfully completed the certification course"
 
   const description = medical
-    ? "This certifies that the learner has successfully completed the full 40-Hour Medical Interpreter Training Program, including medical terminology, ethics, confidentiality, cultural competency, patient-provider communication, interpreting protocols, and final competency assessment."
+    ? MEDICAL_PROGRAM_DESCRIPTION
     : "This certificate confirms the completion of training on professional ethics, confidentiality, cultural sensitivity, and best practices in language services."
 
   const corners = [
@@ -166,12 +168,15 @@ export function CertificatePreview({ cert }: { cert: Certificate }) {
                 {completedLine}
               </p>
               <p className="mt-1.5 font-display text-2xl font-bold sm:text-3xl" style={{ color: GOLD_DEEP }}>
-                {cert.courseTitle}
+                {title}
               </p>
 
-              {medical && hours ? (
-                <p className="mt-2 text-sm font-semibold sm:text-base" style={{ color: GOLD_DEEP }}>
-                  Training Hours Completed: {hours} Hours
+              {medical ? (
+                <p
+                  className="mx-auto mt-3 inline-block rounded-sm border px-4 py-1.5 text-sm font-bold uppercase tracking-[0.18em] sm:text-base"
+                  style={{ color: NAVY, borderColor: GOLD, backgroundColor: "#f7ecd0" }}
+                >
+                  Training Hours Completed: {MEDICAL_PROGRAM_HOURS} Hours
                 </p>
               ) : null}
 

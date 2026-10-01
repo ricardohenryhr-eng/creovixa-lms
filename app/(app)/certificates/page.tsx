@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Award, Download, X, ShieldCheck, ExternalLink, Lock, Clock } from "lucide-react"
+import { Award, X, ShieldCheck, ExternalLink, Lock, Clock } from "lucide-react"
 import { PageHeader, Card, Badge, Button } from "@/components/ui"
 import { CertificatePreview } from "@/components/certificate-preview"
+import { CertificateDownloadButton } from "@/components/certificate-download-button"
+import { MEDICAL_PROGRAM_HOURS, MEDICAL_PROGRAM_TITLE } from "@/lib/certificates"
 import type { Certificate, Course } from "@/lib/data"
 import { useAuth } from "@/lib/auth"
 import { useProgress } from "@/lib/progress"
@@ -29,6 +31,7 @@ export default function CertificatesPage() {
   const recipient = user?.name ?? "Creovixa Learner"
   const { state, ensureCertCode } = useProgress()
   const [active, setActive] = useState<Certificate | null>(null)
+  const certRef = useRef<HTMLDivElement>(null)
 
   const rows = useMemo(() => {
     return orderedCourses.map((course) => {
@@ -50,17 +53,18 @@ export default function CertificatesPage() {
           ? { ...access, accessible: false, reason: "Access disabled by administrator" }
           : access
 
+      const medical = course.certPrefix === "MED"
       const cert: Certificate = {
         id: course.id,
         certId,
-        courseTitle: course.title,
+        courseTitle: medical ? MEDICAL_PROGRAM_TITLE : course.title,
         recipient,
         issuedAt,
         expiresAt,
         score,
         status: expired ? "expired" : "valid",
-        variant: course.certPrefix === "MED" ? "medical" : "standard",
-        hours: course.hours,
+        variant: medical ? "medical" : "standard",
+        hours: medical ? MEDICAL_PROGRAM_HOURS : course.hours,
       }
       return { course, access: finalAccess, cert, expired }
     })
@@ -133,9 +137,7 @@ export default function CertificatesPage() {
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between no-print">
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => window.print()}>
-                  <Download className="h-4 w-4" /> Download PDF
-                </Button>
+                <CertificateDownloadButton targetRef={certRef} certId={active.certId} />
                 <Link href={`/verify/${active.certId}`}>
                   <Button size="sm" variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10">
                     <ExternalLink className="h-4 w-4" /> Verify
@@ -146,7 +148,9 @@ export default function CertificatesPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <CertificatePreview cert={active} />
+            <div ref={certRef}>
+              <CertificatePreview cert={active} />
+            </div>
           </div>
         </div>
       )}
