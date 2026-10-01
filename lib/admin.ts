@@ -12,6 +12,7 @@ import {
   KeyRound,
   Mail,
   Video,
+  LayoutTemplate,
   type LucideIcon,
 } from "lucide-react"
 import type { Role } from "./data"
@@ -49,6 +50,7 @@ export const adminNav: AdminNavItem[] = [
   { href: "/admin/courses", label: "Course Management", section: "courses", icon: BookOpen },
   { href: "/admin/videos", label: "Video Content", section: "videos", icon: Video },
   { href: "/admin/certificates", label: "Certificate Management", section: "certificates", icon: Award },
+  { href: "/admin/certificate-templates", label: "Certificate Templates", section: "certificates", icon: LayoutTemplate },
   { href: "/admin/interpreters", label: "Interpreter Management", section: "interpreters", icon: UserCheck },
   { href: "/admin/access", label: "Access Management", section: "access", icon: KeyRound },
   { href: "/admin/certificate-release", label: "Certificate Release", section: "release", icon: BadgeCheck },
