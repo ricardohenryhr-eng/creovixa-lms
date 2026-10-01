@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import useSWR from "swr"
 import {
   PlayCircle,
@@ -23,7 +23,7 @@ import { Card, Badge, Button } from "@/components/ui"
 import { YouTubePlayer } from "@/components/youtube-player"
 import { getWatchProgress, saveWatchProgress } from "@/app/actions/progress"
 import type { Lesson } from "@/lib/data"
-import { parseVideoSource, WATCH_THRESHOLD } from "@/lib/video"
+import { normalizeRequiredPercent, parseVideoSource } from "@/lib/video"
 import { cn } from "@/lib/utils"
 
 /**
@@ -53,22 +53,31 @@ export function LessonViewer({
   /** Text/image/quiz-only course: never render or require a video. */
   videoFree?: boolean
 }) {
-  const source = useMemo(() => parseVideoSource(videoFree ? null : lesson.videoUrl), [lesson.videoUrl, videoFree])
-  const hasVideo = source.kind !== "none"
+  const videoIds = useMemo(() => {
+    if (videoFree) return []
+    return [lesson.videoUrl, ...(lesson.extraVideos ?? [])]
+      .map((u) => parseVideoSource(u).videoId)
+      .filter((id): id is string => Boolean(id))
+  }, [lesson.videoUrl, lesson.extraVideos, videoFree])
+  const hasVideo = videoIds.length > 0
+  const requiredPercent = normalizeRequiredPercent(lesson.requiredPercent)
   const kc = lesson.knowledgeCheck ?? []
   const hasKc = kc.length > 0
 
-  const [watched, setWatched] = useState(completed || !hasVideo)
-  const markWatched = useCallback(() => setWatched(true), [])
+  const [watchedSet, setWatchedSet] = useState<Set<number>>(new Set())
+  const watched = completed || !hasVideo || videoIds.every((_, i) => watchedSet.has(i))
+  const markWatched = useCallback((i: number) => {
+    setWatchedSet((prev) => (prev.has(i) ? prev : new Set(prev).add(i)))
+  }, [])
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [submitted, setSubmitted] = useState(false)
 
   // Reset transient state whenever the selected lesson changes.
   useEffect(() => {
-    setWatched(completed || !hasVideo)
+    setWatchedSet(new Set())
     setAnswers({})
     setSubmitted(false)
-  }, [lesson.id, completed, hasVideo])
+  }, [lesson.id])
 
   const kcPassed = useMemo(() => {
     if (!hasKc) return true
@@ -80,17 +89,28 @@ export function LessonViewer({
   return (
     <div className="flex flex-col gap-5">
       {/* Video / media */}
-      {hasVideo && source.videoId ? (
-        <LessonVideo
-          key={lesson.id}
-          videoId={source.videoId}
-          title={lesson.title}
-          courseSlug={courseSlug}
-          lessonId={lesson.id}
-          viewer={viewer}
-          onWatched={markWatched}
-          watched={watched}
-        />
+      {hasVideo ? (
+        <div className="flex flex-col gap-6">
+          {videoIds.map((id, i) => (
+            <div key={`${lesson.id}-${i}-${id}`} className="flex flex-col gap-2">
+              {videoIds.length > 1 && (
+                <p className="text-sm font-semibold text-foreground">
+                  Video {i + 1} of {videoIds.length}
+                </p>
+              )}
+              <LessonVideo
+                videoId={id}
+                title={videoIds.length > 1 ? `${lesson.title} (video ${i + 1})` : lesson.title}
+                courseSlug={courseSlug}
+                lessonId={i === 0 ? lesson.id : `${lesson.id}#v${i + 1}`}
+                viewer={viewer}
+                requiredPercent={requiredPercent}
+                onWatched={() => markWatched(i)}
+                watched={completed || watchedSet.has(i)}
+              />
+            </div>
+          ))}
+        </div>
       ) : lesson.type === "video" && !videoFree ? (
         <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-dashed border-border bg-muted text-muted-foreground">
           <div className="flex flex-col items-center gap-2 text-center">
@@ -302,7 +322,9 @@ export function LessonViewer({
               {!canComplete && (
                 <p className="text-xs text-muted-foreground">
                   {!watched
-                    ? `Watch at least ${WATCH_THRESHOLD}% of the lesson video to continue.`
+                    ? videoIds.length > 1
+                      ? `Watch at least ${requiredPercent}% of each lesson video to continue.`
+                      : `Watch at least ${requiredPercent}% of the lesson video to continue.`
                     : hasKc
                       ? "Pass the knowledge check above to complete this lesson."
                       : ""}
@@ -387,7 +409,7 @@ function AudioPractice({ url }: { url: string }) {
 /**
  * Embedded YouTube lesson video. Loads the learner's saved watch percentage,
  * saves progress as they watch, and unlocks completion once they have watched
- * at least WATCH_THRESHOLD percent of the video.
+ * at least the lesson's required percentage of the video.
  */
 function LessonVideo({
   videoId,
@@ -395,6 +417,7 @@ function LessonVideo({
   courseSlug,
   lessonId,
   viewer,
+  requiredPercent,
   watched,
   onWatched,
 }: {
@@ -403,16 +426,19 @@ function LessonVideo({
   courseSlug: string
   lessonId: string
   viewer: string
+  requiredPercent: number
   watched: boolean
   onWatched: () => void
 }) {
   const { data: saved } = useSWR(["watch-progress", courseSlug, lessonId], () => getWatchProgress(courseSlug, lessonId))
   const [livePercent, setLivePercent] = useState(0)
   const percent = Math.max(saved?.maxPercent ?? 0, livePercent)
+  const onWatchedRef = useRef(onWatched)
+  onWatchedRef.current = onWatched
 
   useEffect(() => {
-    if (!watched && percent >= WATCH_THRESHOLD) onWatched()
-  }, [percent, watched, onWatched])
+    if (!watched && percent >= requiredPercent) onWatchedRef.current()
+  }, [percent, watched, requiredPercent])
 
   return (
     <div className="flex flex-col gap-2">
@@ -423,7 +449,7 @@ function LessonVideo({
         initialPercent={saved?.maxPercent ?? 0}
         onProgress={(u) => {
           setLivePercent((p) => Math.max(p, u.percent))
-          void saveWatchProgress({ courseSlug, lessonId, ...u })
+          void saveWatchProgress({ courseSlug, lessonId, requiredPercent, ...u })
         }}
       />
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -438,13 +464,13 @@ function LessonVideo({
           <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${percent}%` }} />
         </div>
         <span className="inline-flex items-center gap-1.5 tabular-nums">
-          {watched || percent >= WATCH_THRESHOLD ? (
+          {watched || percent >= requiredPercent ? (
             <>
               <CheckCircle2 className="h-3.5 w-3.5 text-success" /> Video watched
             </>
           ) : (
             <>
-              <PlayCircle className="h-3.5 w-3.5" /> {percent}% watched · {WATCH_THRESHOLD}% required
+              <PlayCircle className="h-3.5 w-3.5" /> {percent}% watched · {requiredPercent}% required
             </>
           )}
         </span>

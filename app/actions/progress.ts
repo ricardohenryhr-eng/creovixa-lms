@@ -1,7 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { WATCH_THRESHOLD } from "@/lib/video"
+import { normalizeRequiredPercent } from "@/lib/video"
 
 export interface WatchProgress {
   maxPercent: number
@@ -48,7 +48,9 @@ export async function saveWatchProgress(input: {
   percent: number
   watchedSeconds: number
   durationSeconds: number
+  requiredPercent?: number
 }): Promise<{ ok: boolean }> {
+  const threshold = normalizeRequiredPercent(input.requiredPercent)
   const courseSlug = String(input.courseSlug ?? "").slice(0, 200)
   const lessonId = String(input.lessonId ?? "").slice(0, 200)
   if (!courseSlug || !lessonId) return { ok: false }
@@ -80,7 +82,7 @@ export async function saveWatchProgress(input: {
       max_percent: maxPercent,
       watched_seconds: Math.max(existing?.watched_seconds ?? 0, watched),
       duration_seconds: duration || null,
-      completed_at: existing?.completed_at ?? (maxPercent >= WATCH_THRESHOLD ? new Date().toISOString() : null),
+      completed_at: existing?.completed_at ?? (maxPercent >= threshold ? new Date().toISOString() : null),
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id,course_slug,lesson_id" },

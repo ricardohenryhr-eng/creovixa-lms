@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import { canonicalYouTubeUrl } from "@/lib/video"
+import { canonicalYouTubeUrl, normalizeRequiredPercent } from "@/lib/video"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { KnowledgeQuestion, TermItem } from "@/lib/data"
 import {
@@ -134,6 +134,8 @@ export async function saveLessonContent(input: {
   courseSlug: string
   lessonKey: string
   videoUrl: string
+  extraVideos?: string[]
+  requiredPercent?: number
   body: string
   images: LessonImage[]
   vocabulary: TermItem[]
@@ -154,6 +156,19 @@ export async function saveLessonContent(input: {
   if (rawVideo && !videoUrl) {
     return { ok: false, error: "Paste a full YouTube link, e.g. https://www.youtube.com/watch?v=… or https://youtu.be/…" }
   }
+
+  const extraVideos: string[] = []
+  if (!isVideoFreeCourse(courseSlug)) {
+    for (const [i, raw] of (input.extraVideos ?? []).slice(0, 10).entries()) {
+      const trimmed = (raw ?? "").trim()
+      if (!trimmed) continue
+      const url = canonicalYouTubeUrl(trimmed)
+      if (!url) return { ok: false, error: `Additional video ${i + 1} is not a valid YouTube link.` }
+      extraVideos.push(url)
+    }
+  }
+  if (extraVideos.length && !videoUrl) return { ok: false, error: "Add a main video before additional videos." }
+  const requiredPercent = normalizeRequiredPercent(input.requiredPercent)
 
   const body = (input.body ?? "").trim().slice(0, MAX_TEXT) || null
 
@@ -204,6 +219,8 @@ export async function saveLessonContent(input: {
       lesson_id: lessonKey,
       video_url: videoUrl,
       provider: videoUrl ? "youtube" : null,
+      extra_videos: extraVideos,
+      required_percent: requiredPercent,
       body,
       images,
       vocabulary,

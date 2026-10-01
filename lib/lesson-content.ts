@@ -1,4 +1,5 @@
 import type { KnowledgeQuestion, TermItem } from "@/lib/data"
+import { normalizeRequiredPercent } from "@/lib/video"
 
 export interface LessonImage {
   url: string
@@ -16,6 +17,8 @@ export type LessonStatus = "draft" | "published"
 export interface LessonContentRow {
   lessonKey: string
   videoUrl: string | null
+  extraVideos: string[]
+  requiredPercent: number
   transcript: string | null
   audioUrl: string | null
   durationSeconds: number | null
@@ -75,6 +78,8 @@ export function toLessonContentRow(r: Record<string, unknown>): LessonContentRow
   return {
     lessonKey: str(r.lesson_id),
     videoUrl: (r.video_url as string | null) ?? null,
+    extraVideos: asArray(r.extra_videos).map(str).filter(Boolean),
+    requiredPercent: normalizeRequiredPercent(r.required_percent),
     transcript: (r.transcript as string | null) ?? null,
     audioUrl: (r.audio_url as string | null) ?? null,
     durationSeconds: (r.duration_seconds as number | null) ?? null,

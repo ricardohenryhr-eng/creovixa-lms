@@ -18,8 +18,14 @@ export interface VideoSource {
   isFile: false
 }
 
-/** Percentage of a lesson video a learner must watch for it to count as watched. */
-export const WATCH_THRESHOLD = 90
+/** Default percentage of a lesson video a learner must watch; admins can override per lesson. */
+export const WATCH_THRESHOLD = 80
+
+/** Clamp an admin-configured viewing requirement to 10–100, falling back to the default. */
+export function normalizeRequiredPercent(value: unknown): number {
+  const n = Math.round(Number(value))
+  return Number.isFinite(n) && n > 0 ? Math.min(100, Math.max(10, n)) : WATCH_THRESHOLD
+}
 
 const ID_RE = /^[A-Za-z0-9_-]{11}$/
 

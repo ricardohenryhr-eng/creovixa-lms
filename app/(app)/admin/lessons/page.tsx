@@ -30,7 +30,7 @@ import {
 import { PageHeader, Card, Badge, Button, Input } from "@/components/ui"
 import { RichText } from "@/components/rich-text"
 import { courses, type KnowledgeQuestion, type Lesson, type TermItem } from "@/lib/data"
-import { parseVideoSource } from "@/lib/video"
+import { parseVideoSource, WATCH_THRESHOLD } from "@/lib/video"
 import { YouTubePlayer } from "@/components/youtube-player"
 import {
   isVideoFreeCourse,
@@ -172,6 +172,12 @@ function LessonEditor({
   onSaved: () => void
 }) {
   const [videoUrl, setVideoUrl] = useState(row?.videoUrl ?? lesson.videoUrl ?? "")
+  const [extraVideos, setExtraVideos] = useState<string[]>(
+    row?.extraVideos.length ? row.extraVideos : (lesson.extraVideos ?? []),
+  )
+  const [requiredPercent, setRequiredPercent] = useState(
+    String(row?.requiredPercent ?? lesson.requiredPercent ?? WATCH_THRESHOLD),
+  )
   const [body, setBody] = useState(row?.body ?? (lesson.content ?? []).join("\n\n"))
   const [images, setImages] = useState<LessonImage[]>(row?.images.length ? row.images : (lesson.images ?? []))
   const [vocabulary, setVocabulary] = useState<TermItem[]>(
@@ -196,6 +202,8 @@ function LessonEditor({
         courseSlug,
         lessonKey: lessonKeyValue,
         videoUrl,
+        extraVideos,
+        requiredPercent: Number(requiredPercent),
         body,
         images,
         vocabulary,
@@ -334,6 +342,90 @@ function LessonEditor({
                 Paste a YouTube link. It is embedded at the top of the lesson; only the link is stored.
               </p>
             )}
+
+            <div className="flex flex-col gap-3 border-t border-border pt-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium text-foreground">Additional videos</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!videoUrl.trim() || extraVideos.length >= 10}
+                  onClick={() => setExtraVideos((v) => [...v, ""])}
+                >
+                  <Plus className="h-4 w-4" /> Add video
+                </Button>
+              </div>
+              {extraVideos.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Optional. Extra YouTube videos play in order below the main video.
+                </p>
+              ) : (
+                extraVideos.map((url, i) => {
+                  const id = parseVideoSource(url || null).videoId
+                  const invalid = Boolean(url.trim()) && !id
+                  return (
+                    <div key={i} className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <Input
+                          value={url}
+                          onChange={(e) =>
+                            setExtraVideos((v) => v.map((x, j) => (j === i ? e.target.value : x)))
+                          }
+                          placeholder={`Video ${i + 2} YouTube link`}
+                          aria-label={`Additional video ${i + 1} URL`}
+                          aria-invalid={invalid}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={i === 0}
+                          onClick={() =>
+                            setExtraVideos((v) => {
+                              const n = [...v]
+                              ;[n[i - 1], n[i]] = [n[i], n[i - 1]]
+                              return n
+                            })
+                          }
+                          aria-label={`Move additional video ${i + 1} up`}
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setExtraVideos((v) => v.filter((_, j) => j !== i))}
+                          aria-label={`Remove additional video ${i + 1}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {invalid ? (
+                        <p className="text-xs text-destructive">Not a valid YouTube link.</p>
+                      ) : id ? (
+                        <YouTubePlayer key={id} videoId={id} title={`${lesson.title} (video ${i + 2})`} />
+                      ) : null}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <label className="flex flex-wrap items-center gap-3 border-t border-border pt-3 text-sm">
+              <span className="font-medium text-foreground">Required viewing</span>
+              <Input
+                type="number"
+                min={10}
+                max={100}
+                step={5}
+                value={requiredPercent}
+                onChange={(e) => setRequiredPercent(e.target.value)}
+                className="w-24"
+                aria-describedby="required-viewing-hint"
+              />
+              <span id="required-viewing-hint" className="text-xs text-muted-foreground">
+                % of each video a learner must watch before continuing (default {WATCH_THRESHOLD}%).
+              </span>
+            </label>
           </div>
         )}
       </EditorSection>

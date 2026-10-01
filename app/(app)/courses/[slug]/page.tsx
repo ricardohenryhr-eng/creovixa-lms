@@ -97,6 +97,8 @@ export default function CourseDetailPage() {
           return {
             ...base,
             videoUrl: videoFree ? undefined : (v.videoUrl ?? base.videoUrl),
+            extraVideos: videoFree ? undefined : v.extraVideos?.length ? v.extraVideos : base.extraVideos,
+            requiredPercent: v.requiredPercent ?? base.requiredPercent,
             transcript: v.transcript ?? base.transcript,
             audioUrl: v.audioUrl ?? base.audioUrl,
             duration: formatDuration(v.durationSeconds) ?? base.duration,
