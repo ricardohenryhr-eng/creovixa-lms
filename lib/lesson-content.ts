@@ -49,6 +49,19 @@ export function lessonKey(moduleId: string, lessonId: string): string {
   return `${moduleId}::${lessonId}`
 }
 
+/**
+ * Apply a saved admin order to a module's lessons. Lessons missing from the
+ * saved order (e.g. newly authored ones) keep their place at the end.
+ */
+export function applyLessonOrder<T extends { id: string }>(lessons: T[], order?: string[]): T[] {
+  if (!order?.length) return lessons
+  const rank = new Map(order.map((id, i) => [id, i]))
+  return lessons
+    .map((l, i) => ({ l, r: rank.get(l.id) ?? order.length + i }))
+    .sort((a, b) => a.r - b.r)
+    .map((x) => x.l)
+}
+
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : []
 }

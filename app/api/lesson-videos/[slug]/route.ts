@@ -15,13 +15,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const { slug } = await params
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from("lesson_videos")
-    .select("*")
-    .eq("course_slug", slug)
-    .eq("status", "published")
+  const [{ data, error }, { data: orderRows }] = await Promise.all([
+    supabase.from("lesson_videos").select("*").eq("course_slug", slug).eq("status", "published"),
+    supabase.from("lesson_order").select("module_id, lesson_ids").eq("course_slug", slug),
+  ])
 
-  if (error) return NextResponse.json({ videos: {} })
+  const order: Record<string, string[]> = Object.fromEntries(
+    (orderRows ?? []).map((r) => [r.module_id as string, (r.lesson_ids as string[]) ?? []]),
+  )
+  if (error) return NextResponse.json({ videos: {}, order })
 
   const videos: Record<string, LessonContentRow> = {}
   for (const row of data ?? []) {
@@ -29,5 +31,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     videos[parsed.lessonKey] = parsed
   }
 
-  return NextResponse.json({ videos })
+  return NextResponse.json({ videos, order })
 }

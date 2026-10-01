@@ -253,6 +253,77 @@ export async function uploadLessonAsset(formData: FormData): Promise<ActionResul
   return { ok: true, url: data.publicUrl, name: file.name.replace(/\.[^.]+$/, "") }
 }
 
+const VIDEO_TYPES = new Set(["video/mp4", "video/webm"])
+const MAX_VIDEO = 50 * 1024 * 1024
+
+/**
+ * Lesson videos are too large to pass through a server action, so this issues
+ * a one-time signed upload URL and the browser uploads straight to Storage.
+ */
+export async function createLessonVideoUpload(input: {
+  courseSlug: string
+  fileType: string
+  fileSize: number
+}): Promise<ActionResult & { path?: string; token?: string; publicUrl?: string }> {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { ok: false, error: guard.error }
+  const courseSlug = (input.courseSlug ?? "").replace(/[^a-z0-9-]/gi, "")
+  if (!courseSlug) return { ok: false, error: "Missing course." }
+  if (isVideoFreeCourse(courseSlug)) return { ok: false, error: "This course does not use video." }
+  if (!VIDEO_TYPES.has(input.fileType)) return { ok: false, error: "Videos must be MP4 or WebM files." }
+  if (!(input.fileSize > 0) || input.fileSize > MAX_VIDEO) return { ok: false, error: "Videos must be 50 MB or smaller." }
+
+  const path = `${courseSlug}/videos/${crypto.randomUUID()}.${input.fileType === "video/webm" ? "webm" : "mp4"}`
+  const admin = createAdminClient()
+  const { data, error } = await admin.storage.from("lesson-media").createSignedUploadUrl(path)
+  if (error || !data) return { ok: false, error: error?.message ?? "Could not start the upload." }
+  const { data: pub } = admin.storage.from("lesson-media").getPublicUrl(path)
+  return { ok: true, path: data.path, token: data.token, publicUrl: pub.publicUrl }
+}
+
+/** Publish or unpublish an edited lesson without changing its content. */
+export async function setLessonStatus(courseSlug: string, lessonKey: string, status: LessonStatus): Promise<ActionResult> {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { ok: false, error: guard.error }
+  const { error } = await guard.supabase
+    .from("lesson_videos")
+    .update({ status: status === "draft" ? "draft" : "published", updated_at: new Date().toISOString() })
+    .eq("course_slug", courseSlug)
+    .eq("lesson_id", lessonKey)
+  if (error) return { ok: false, error: error.message }
+  revalidatePath(`/courses/${courseSlug}`)
+  revalidatePath("/admin/lessons")
+  return {
+    ok: true,
+    message: status === "draft" ? "Unpublished. Learners now see the default lesson content." : "Lesson published.",
+  }
+}
+
+/** Saved lesson order per module for one course: `{ [moduleId]: lessonIds[] }`. */
+export async function listLessonOrder(courseSlug: string): Promise<Record<string, string[]>> {
+  const guard = await requireAdmin()
+  if ("error" in guard) return {}
+  const { data } = await guard.supabase.from("lesson_order").select("module_id, lesson_ids").eq("course_slug", courseSlug)
+  return Object.fromEntries((data ?? []).map((r) => [r.module_id as string, (r.lesson_ids as string[]) ?? []]))
+}
+
+/** Persist the drag-and-drop order of lessons inside one module. */
+export async function saveLessonOrder(courseSlug: string, moduleId: string, lessonIds: string[]): Promise<ActionResult> {
+  const guard = await requireAdmin()
+  if ("error" in guard) return { ok: false, error: guard.error }
+  const ids = Array.from(new Set((lessonIds ?? []).map((id) => String(id).trim()).filter(Boolean))).slice(0, 200)
+  if (!courseSlug || !moduleId || ids.length === 0) return { ok: false, error: "Nothing to reorder." }
+  const { error } = await guard.supabase
+    .from("lesson_order")
+    .upsert(
+      { course_slug: courseSlug, module_id: moduleId, lesson_ids: ids, updated_at: new Date().toISOString() },
+      { onConflict: "course_slug,module_id" },
+    )
+  if (error) return { ok: false, error: error.message }
+  revalidatePath(`/courses/${courseSlug}`)
+  return { ok: true, message: "Lesson order saved." }
+}
+
 /** Remove the database media for one lesson (reverts it to "coming soon"). */
 export async function deleteLessonVideo(courseSlug: string, lessonId: string): Promise<ActionResult> {
   const guard = await requireAdmin()
