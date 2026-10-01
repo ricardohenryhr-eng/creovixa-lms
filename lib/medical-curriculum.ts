@@ -20,6 +20,7 @@ export const extraLessons: ExtraLessonSpec[] = [
     title: "Medical ethics and ethical decision-making",
     duration: "45 min",
     type: "reading",
+    images: [{ url: "/images/medical/m2-ethics.png", caption: "The interpreter stays neutral so the patient and provider can speak directly to each other." }],
     objectives: [
       "Explain the four principles of biomedical ethics: autonomy, beneficence, non-maleficence, and justice",
       "Distinguish the provider's ethical duties from the interpreter's",
@@ -55,6 +56,7 @@ export const extraLessons: ExtraLessonSpec[] = [
     title: "Interpreter protocols: pre-session, introduction, and post-session",
     duration: "40 min",
     type: "reading",
+    images: [{ url: "/images/medical/m3-protocols.png", caption: "A clear introduction sets expectations for both the patient and the provider." }],
     objectives: [
       "Conduct a brief pre-session with the provider",
       "Deliver a complete professional introduction",
@@ -89,6 +91,7 @@ export const extraLessons: ExtraLessonSpec[] = [
     title: "Abbreviations, sound-alikes, and specialty vocabulary",
     duration: "50 min",
     type: "reading",
+    images: [{ url: "/images/medical/m4-abbreviations.png", caption: "Charts and prescriptions are full of abbreviations, so confirm any you are unsure of." }],
     objectives: [
       "Recognize common clinical abbreviations and dosing terms",
       "Avoid errors with sound-alike and look-alike terms",
@@ -303,6 +306,7 @@ export const extraLessons: ExtraLessonSpec[] = [
     title: "Mental health interpreting",
     duration: "45 min",
     type: "reading",
+    images: [{ url: "/images/medical/m8-mental-health.png", caption: "In mental health sessions, the patient's exact words, tone, and pauses carry clinical meaning." }],
     objectives: [
       "Explain why form, not just content, carries clinical meaning in mental health",
       "Interpret assessments of mood, risk, and thought process accurately",
