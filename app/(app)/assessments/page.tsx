@@ -5,10 +5,12 @@ import { FileCheck2, Clock, Target, CheckCircle2, Lock, ArrowRight } from "lucid
 import { PageHeader, Card, Badge, Button } from "@/components/ui"
 import { assessments, getCourseById } from "@/lib/data"
 import { useProgress } from "@/lib/progress"
+import { useProgressionBypass } from "@/lib/use-progression-bypass"
 import { assessmentUnlocked, assessmentPassed } from "@/lib/curriculum"
 
 export default function AssessmentsPage() {
   const { state } = useProgress()
+  const bypass = useProgressionBypass()
 
   return (
     <div>
@@ -17,7 +19,7 @@ export default function AssessmentsPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         {assessments.map((a) => {
           const course = getCourseById(a.courseId)
-          const unlocked = course ? assessmentUnlocked(course, state) : true
+          const unlocked = bypass || (course ? assessmentUnlocked(course, state) : true)
           const passed = course ? assessmentPassed(course, state) : false
           const best = state.passedAssessments[a.id] ?? null
 

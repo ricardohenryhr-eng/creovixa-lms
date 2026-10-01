@@ -6,6 +6,7 @@ import { PageHeader, Input } from "@/components/ui"
 import { CourseCard } from "@/components/course-card"
 import { categories } from "@/lib/data"
 import { useProgress } from "@/lib/progress"
+import { useProgressionBypass } from "@/lib/use-progression-bypass"
 import { coursesByTrack, courseUnlocked, courseCompleted, lessonProgress } from "@/lib/curriculum"
 import { cn } from "@/lib/utils"
 
@@ -13,6 +14,7 @@ export default function CoursesPage() {
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState("All")
   const { state } = useProgress()
+  const bypass = useProgressionBypass()
 
   const sections = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -89,7 +91,7 @@ export default function CoursesPage() {
                   <CourseCard
                     key={c.id}
                     course={c}
-                    locked={!courseUnlocked(c, state)}
+                    locked={!bypass && !courseUnlocked(c, state)}
                     completed={courseCompleted(c, state)}
                     progressPct={lessonProgress(c, state).pct}
                   />

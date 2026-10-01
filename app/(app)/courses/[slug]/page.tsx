@@ -28,6 +28,8 @@ import { ContentGuard } from "@/components/content-protection"
 import { LessonViewer } from "@/components/lesson-viewer"
 import { useAuth } from "@/lib/auth"
 import { useProgress } from "@/lib/progress"
+import { useProgressionBypass } from "@/lib/use-progression-bypass"
+import { AdminPreviewBadge } from "@/components/admin-preview-badge"
 import { getCourse } from "@/lib/data"
 import type { Course, LessonType } from "@/lib/data"
 import { formatDuration } from "@/lib/video"
@@ -77,6 +79,7 @@ export default function CourseDetailPage() {
   const viewer = user?.email ?? "guest"
   const recipient = user?.name ?? "Creovixa Learner"
   const { state, setCourseLessons, markCourseCompleted } = useProgress()
+  const bypass = useProgressionBypass()
 
   // Overlay the database-backed training media (real video URL, transcript,
   // audio drill, duration) onto the static lesson data. Until an admin adds a
@@ -124,8 +127,8 @@ export default function CourseDetailPage() {
   const assessment = courseAssessment(course.id)
   const lessonsDone = allLessonsComplete(course, state)
   const quizPassed = assessmentPassed(course, state)
-  const quizUnlocked = assessmentUnlocked(course, state)
-  const unlocked = courseUnlocked(course, state)
+  const quizUnlocked = bypass || assessmentUnlocked(course, state)
+  const unlocked = bypass || courseUnlocked(course, state)
 
   const access = certificateAccess(course, state, recipient)
   const rule = course.cert
@@ -145,7 +148,7 @@ export default function CourseDetailPage() {
   }
 
   function selectLesson(id: string) {
-    if (!lessonUnlocked(course, id, state)) return
+    if (!bypass && !lessonUnlocked(course, id, state)) return
     setCurrentLessonId(id)
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
   }
@@ -179,6 +182,8 @@ export default function CourseDetailPage() {
   return (
     <ContentGuard>
       <BackLink />
+
+      {bypass && <AdminPreviewBadge className="mb-4" />}
 
       {/* Hero */}
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -240,7 +245,7 @@ export default function CourseDetailPage() {
                     {m.lessons.map((l) => {
                       const Icon = lessonIcon[l.type]
                       const done = completedSet.has(l.id)
-                      const isUnlocked = lessonUnlocked(course, l.id, state)
+                      const isUnlocked = bypass || lessonUnlocked(course, l.id, state)
                       const active = l.id === currentLesson?.id
                       return (
                         <li key={l.id} className={active ? "bg-accent/40" : undefined}>

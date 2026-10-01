@@ -6,6 +6,7 @@ import { BookOpen } from "lucide-react"
 import { PageHeader, Button } from "@/components/ui"
 import { CourseCard } from "@/components/course-card"
 import { useProgress } from "@/lib/progress"
+import { useProgressionBypass } from "@/lib/use-progression-bypass"
 import { orderedCourses, courseUnlocked, courseCompleted, lessonProgress } from "@/lib/curriculum"
 import { cn } from "@/lib/utils"
 
@@ -20,11 +21,12 @@ const tabs: { id: Tab; label: string }[] = [
 export default function MyCoursesPage() {
   const [tab, setTab] = useState<Tab>("all")
   const { state } = useProgress()
+  const bypass = useProgressionBypass()
 
   const rows = orderedCourses.map((c) => {
     const pct = lessonProgress(c, state).pct
     const completed = courseCompleted(c, state)
-    const locked = !courseUnlocked(c, state)
+    const locked = !bypass && !courseUnlocked(c, state)
     return { course: c, pct, completed, locked }
   })
 
